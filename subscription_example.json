@@ -4,17 +4,29 @@
   "updated_at": "2025-04-17T00:00:00Z",
   "nodes": [
     {
-      "name": "节点1",
-      "address": "server1.example.com",
-      "port": 7088
+      "name": "SSR节点1",
+      "server": "server1.example.com",
+      "server_port": 7088,
+      "password": "password123",
+      "method": "rc4-md5",
+      "obfs": "plain",
+      "obfs_param": "example.com",
+      "protocol": "auth_aes128_md5",
+      "protocol_param": "12345:abcde"
     },
     {
-      "name": "节点2",
-      "address": "server2.example.com",
-      "port": 7088
+      "name": "SSR节点2",
+      "server": "server2.example.com",
+      "server_port": 7088,
+      "password": "password456",
+      "method": "rc4-md5",
+      "obfs": "plain",
+      "obfs_param": "example.org",
+      "protocol": "auth_aes128_md5",
+      "protocol_param": "67890:fghij"
     },
     {
-      "name": "节点3",
+      "name": "普通节点",
       "address": "server3.example.com",
       "port": 7088
     }

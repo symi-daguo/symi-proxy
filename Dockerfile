@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-LABEL io.hass.version="1.0.2" \
+LABEL io.hass.version="1.0.3" \
       io.hass.type="addon" \
       io.hass.arch="armhf|armv7|aarch64|amd64|i386"
 
@@ -16,6 +16,7 @@ RUN mkdir -p /app/templates
 
 # 复制文件
 COPY *.py /app/
+COPY templates /app/templates
 
 # 设置权限
 RUN chmod a+x /app/*.py

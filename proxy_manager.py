@@ -21,17 +21,26 @@ logger = logging.getLogger("proxy_manager")
 
 class Node:
     """代理节点类"""
-    def __init__(self, name, address, port, latency=None):
+    def __init__(self, name, address, port, latency=None, password=None, method=None, 
+                 obfs=None, obfs_param=None, protocol=None, protocol_param=None):
         self.name = name
         self.address = address
         self.port = port
         self.latency = latency  # 延迟时间，单位毫秒
         self.last_check = None  # 最后一次检查时间
         self.status = "unknown"  # 状态：unknown, online, offline
+        
+        # 兼容SS/SSR节点格式
+        self.password = password
+        self.method = method
+        self.obfs = obfs
+        self.obfs_param = obfs_param
+        self.protocol = protocol
+        self.protocol_param = protocol_param
 
     def to_dict(self):
         """转换为字典"""
-        return {
+        node_dict = {
             "name": self.name,
             "address": self.address,
             "port": self.port,
@@ -39,6 +48,22 @@ class Node:
             "last_check": self.last_check.isoformat() if self.last_check else None,
             "status": self.status
         }
+        
+        # 如果有SS/SSR相关参数，也添加到字典中
+        if self.password:
+            node_dict["password"] = self.password
+        if self.method:
+            node_dict["method"] = self.method
+        if self.obfs:
+            node_dict["obfs"] = self.obfs
+        if self.obfs_param:
+            node_dict["obfs_param"] = self.obfs_param
+        if self.protocol:
+            node_dict["protocol"] = self.protocol
+        if self.protocol_param:
+            node_dict["protocol_param"] = self.protocol_param
+            
+        return node_dict
 
     def check_availability(self, timeout=2):
         """检查节点是否可用"""
@@ -88,11 +113,28 @@ class ProxyManager:
         """加载自定义节点"""
         custom_nodes = self.options.get("custom_nodes", [])
         for node_info in custom_nodes:
-            node = Node(
-                name=node_info.get("name", f"自定义节点-{len(self.nodes)+1}"),
-                address=node_info.get("address"),
-                port=node_info.get("port")
-            )
+            # 支持两种格式：简单格式(name,address,port)和完整格式(包括SS/SSR参数)
+            if "server" in node_info:
+                # SS/SSR完整格式
+                name = node_info.get("name", f"自定义节点-{len(self.nodes)+1}")
+                node = Node(
+                    name=name,
+                    address=node_info.get("server"),
+                    port=node_info.get("server_port"),
+                    password=node_info.get("password"),
+                    method=node_info.get("method"),
+                    obfs=node_info.get("obfs"),
+                    obfs_param=node_info.get("obfs_param"),
+                    protocol=node_info.get("protocol"),
+                    protocol_param=node_info.get("protocol_param")
+                )
+            else:
+                # 简单格式
+                node = Node(
+                    name=node_info.get("name", f"自定义节点-{len(self.nodes)+1}"),
+                    address=node_info.get("address"),
+                    port=node_info.get("port")
+                )
             self.nodes.append(node)
         logger.info(f"已加载 {len(custom_nodes)} 个自定义节点")
 
@@ -121,28 +163,80 @@ class ProxyManager:
                 pass
             
             # 解析节点信息
-            # 支持多种格式：JSON、普通文本（每行一个节点）
             nodes = []
             
             # 尝试解析为JSON
             try:
                 data = json.loads(content)
-                if isinstance(data, list):
-                    for item in data:
-                        if isinstance(item, dict) and "name" in item and "address" in item and "port" in item:
-                            nodes.append(Node(
-                                name=item["name"],
-                                address=item["address"],
-                                port=item["port"]
-                            ))
+                
+                # 处理单个节点的情况
+                if isinstance(data, dict) and "server" in data and "server_port" in data:
+                    # SS/SSR单节点格式
+                    name = data.get("name", f"节点-1")
+                    nodes.append(Node(
+                        name=name,
+                        address=data.get("server"),
+                        port=data.get("server_port"),
+                        password=data.get("password"),
+                        method=data.get("method"),
+                        obfs=data.get("obfs"),
+                        obfs_param=data.get("obfs_param"),
+                        protocol=data.get("protocol"),
+                        protocol_param=data.get("protocol_param")
+                    ))
+                
+                # 处理节点数组
+                elif isinstance(data, list):
+                    for i, item in enumerate(data):
+                        if isinstance(item, dict):
+                            if "server" in item and "server_port" in item:
+                                # SS/SSR节点格式
+                                name = item.get("name", f"节点-{i+1}")
+                                nodes.append(Node(
+                                    name=name,
+                                    address=item.get("server"),
+                                    port=item.get("server_port"),
+                                    password=item.get("password"),
+                                    method=item.get("method"),
+                                    obfs=item.get("obfs"),
+                                    obfs_param=item.get("obfs_param"),
+                                    protocol=item.get("protocol"),
+                                    protocol_param=item.get("protocol_param")
+                                ))
+                            elif "name" in item and "address" in item and "port" in item:
+                                # 简单格式
+                                nodes.append(Node(
+                                    name=item["name"],
+                                    address=item["address"],
+                                    port=item["port"]
+                                ))
+                
+                # 处理包含nodes字段的格式
                 elif isinstance(data, dict) and "nodes" in data and isinstance(data["nodes"], list):
-                    for item in data["nodes"]:
-                        if isinstance(item, dict) and "name" in item and "address" in item and "port" in item:
-                            nodes.append(Node(
-                                name=item["name"],
-                                address=item["address"],
-                                port=item["port"]
-                            ))
+                    for i, item in enumerate(data["nodes"]):
+                        if isinstance(item, dict):
+                            if "server" in item and "server_port" in item:
+                                # SS/SSR节点格式
+                                name = item.get("name", f"节点-{i+1}")
+                                nodes.append(Node(
+                                    name=name,
+                                    address=item.get("server"),
+                                    port=item.get("server_port"),
+                                    password=item.get("password"),
+                                    method=item.get("method"),
+                                    obfs=item.get("obfs"),
+                                    obfs_param=item.get("obfs_param"),
+                                    protocol=item.get("protocol"),
+                                    protocol_param=item.get("protocol_param")
+                                ))
+                            elif "name" in item and "address" in item and "port" in item:
+                                # 简单格式
+                                nodes.append(Node(
+                                    name=item["name"],
+                                    address=item["address"],
+                                    port=item["port"]
+                                ))
+                
             except json.JSONDecodeError:
                 # 如果不是JSON，尝试按行解析
                 lines = content.split('\n')

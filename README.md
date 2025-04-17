@@ -3,7 +3,7 @@
 一个支持订阅功能的代理服务器，专为Home Assistant OS (HassOS)设计，可以访问长城防火墙外部世界。
 
 ## 版本信息
-当前版本: 1.0.2
+当前版本: 1.0.3
 
 ## 安装方法
 
@@ -55,26 +55,49 @@ https://example.com/api/v1/client/subscribe?token=您的订阅令牌
 
 本插件支持多种订阅格式：
 
-### 1. JSON格式
+### 1. SSR/SS格式（推荐）
 
 ```json
 {
-  "nodes": [
-    {
-      "name": "节点1",
-      "address": "server1.example.com",
-      "port": 7088
-    },
-    {
-      "name": "节点2",
-      "address": "server2.example.com",
-      "port": 7088
-    }
-  ]
+  "server": "server1.example.com",
+  "server_port": 7088,
+  "password": "password123",
+  "method": "rc4-md5",
+  "obfs": "plain",
+  "obfs_param": "example.com",
+  "protocol": "auth_aes128_md5",
+  "protocol_param": "12345:abcde"
 }
 ```
 
-或简化的JSON格式：
+或多节点格式：
+
+```json
+[
+  {
+    "name": "节点1",
+    "server": "server1.example.com",
+    "server_port": 7088,
+    "password": "password123",
+    "method": "rc4-md5",
+    "obfs": "plain",
+    "obfs_param": "example.com",
+    "protocol": "auth_aes128_md5",
+    "protocol_param": "12345:abcde"
+  },
+  {
+    "name": "节点2",
+    "server": "server2.example.com",
+    "server_port": 7088,
+    "password": "password456",
+    "method": "rc4-md5",
+    "obfs": "plain",
+    "protocol": "auth_aes128_md5"
+  }
+]
+```
+
+### 2. 简单格式
 
 ```json
 [
@@ -91,7 +114,7 @@ https://example.com/api/v1/client/subscribe?token=您的订阅令牌
 ]
 ```
 
-### 2. 文本格式
+### 3. 文本格式
 
 每行一个节点，支持以下格式：
 ```
@@ -100,7 +123,7 @@ https://example.com/api/v1/client/subscribe?token=您的订阅令牌
 server3.example.com:7088 节点3
 ```
 
-### 3. Base64编码格式
+### 4. Base64编码格式
 
 支持将上述文本或JSON格式进行Base64编码后的订阅。
 
@@ -109,12 +132,28 @@ server3.example.com:7088 节点3
 1. 在Home Assistant中，进入**设置** -> **加载项** -> **Symi Proxy**
 2. 点击**配置**选项卡
 3. 在`custom_nodes`部分添加您的节点信息：
+
+   ### SSR格式（推荐）
+   ```yaml
+   custom_nodes:
+     - server: "server.example.com"
+       server_port: 7088
+       password: "password123"
+       method: "rc4-md5"
+       obfs: "plain"
+       obfs_param: "example.com"
+       protocol: "auth_aes128_md5"
+       protocol_param: "12345:abcde"
+   ```
+
+   ### 简单格式
    ```yaml
    custom_nodes:
      - name: "节点名称"
        address: "节点地址"
        port: 7088
    ```
+
 4. 点击**保存**并重启插件
 
 ## 节点管理
