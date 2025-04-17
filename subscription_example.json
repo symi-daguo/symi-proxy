@@ -1,0 +1,22 @@
+{
+  "name": "示例订阅",
+  "description": "这是一个示例订阅文件，展示了支持的格式",
+  "updated_at": "2025-04-17T00:00:00Z",
+  "nodes": [
+    {
+      "name": "节点1",
+      "address": "server1.example.com",
+      "port": 7088
+    },
+    {
+      "name": "节点2",
+      "address": "server2.example.com",
+      "port": 7088
+    },
+    {
+      "name": "节点3",
+      "address": "server3.example.com",
+      "port": 7088
+    }
+  ]
+}

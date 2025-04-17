@@ -1,0 +1,38 @@
+{
+  "name": "Symi Proxy",
+  "version": "1.0.0",
+  "slug": "symi_proxy",
+  "description": "Symi Proxy with subscription support for Home Assistant OS",
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "startup": "services",
+  "boot": "auto",
+  "host_network": false,
+  "ports": {
+    "7088/tcp": 7088,
+    "8088/tcp": 8088
+  },
+  "ingress": true,
+  "ingress_port": 8088,
+  "panel_icon": "mdi:transit-connection-variant",
+  "privileged": ["NET_ADMIN"],
+  "url": "https://github.com/symi-daguo/symi-proxy",
+  "image": "symidaguo/{arch}-addon-symi_proxy",
+  "options": {
+    "local_port": 7088,
+    "subscription_url": "",
+    "subscription_update_interval": 24,
+    "default_node": "auto",
+    "custom_nodes": []
+  },
+  "schema": {
+    "local_port": "port",
+    "subscription_url": "str?",
+    "subscription_update_interval": "int(1,168)",
+    "default_node": "str",
+    "custom_nodes": [{
+      "name": "str",
+      "address": "str",
+      "port": "port"
+    }]
+  }
+}
