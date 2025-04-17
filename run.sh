@@ -1,20 +1,21 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
 
-# 获取配置信息
-CONFIG_PATH=/data/options.json
-LOCAL_PORT=$(bashio::config 'local_port')
-SUBSCRIPTION_URL=$(bashio::config 'subscription_url')
-SUBSCRIPTION_UPDATE_INTERVAL=$(bashio::config 'subscription_update_interval')
-DEFAULT_NODE=$(bashio::config 'default_node')
+echo "Starting Symi Proxy..."
 
 # 输出配置信息
-bashio::log.info "Starting Symi Proxy..."
-bashio::log.info "Local port: ${LOCAL_PORT}"
-bashio::log.info "Subscription update interval: ${SUBSCRIPTION_UPDATE_INTERVAL} hours"
+echo "读取配置..."
+CONFIG_PATH=/data/options.json
+LOCAL_PORT=$(jq -r '.local_port // 7088' $CONFIG_PATH)
+SUBSCRIPTION_URL=$(jq -r '.subscription_url // ""' $CONFIG_PATH)
+SUBSCRIPTION_UPDATE_INTERVAL=$(jq -r '.subscription_update_interval // 24' $CONFIG_PATH)
+DEFAULT_NODE=$(jq -r '.default_node // "auto"' $CONFIG_PATH)
+
+echo "本地端口: ${LOCAL_PORT}"
+echo "订阅更新间隔: ${SUBSCRIPTION_UPDATE_INTERVAL} 小时"
 
 # 确保iptables可用
 if ! command -v iptables >/dev/null 2>&1; then
-    bashio::log.warning "iptables not found, installing..."
+    echo "iptables not found, installing..."
     apk add --no-cache iptables
 fi
 

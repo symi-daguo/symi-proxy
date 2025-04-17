@@ -1,6 +1,6 @@
 {
   "name": "Symi Proxy",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "slug": "symi_proxy",
   "description": "Symi Proxy with subscription support for Home Assistant OS",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -21,7 +21,7 @@
   "stage": "stable",
   "privileged": ["NET_ADMIN"],
   "url": "https://github.com/symi-daguo/symi-proxy",
-  "image": "ghcr.io/home-assistant/{arch}-addon-symi_proxy",
+  "image": "symidaguo/symi-proxy-{arch}",
   "init": false,
   "homeassistant_api": false,
   "docker_api": false,

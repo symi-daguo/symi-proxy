@@ -1,7 +1,0 @@
-#!/command/with-contenv bashio
-# ==============================================================================
-# Start Symi Proxy service
-# ==============================================================================
-
-bashio::log.info "Starting Symi Proxy service..."
-exec /run.sh 
