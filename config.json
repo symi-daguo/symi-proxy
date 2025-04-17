@@ -7,6 +7,8 @@
   "startup": "services",
   "boot": "auto",
   "host_network": false,
+  "hassio_api": true,
+  "hassio_role": "default",
   "ports": {
     "7088/tcp": 7088,
     "8088/tcp": 8088
