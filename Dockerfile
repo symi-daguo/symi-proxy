@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-LABEL io.hass.version="1.0.1" \
+LABEL io.hass.version="1.0.2" \
       io.hass.type="addon" \
       io.hass.arch="armhf|armv7|aarch64|amd64|i386"
 

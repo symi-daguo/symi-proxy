@@ -238,7 +238,7 @@ def create_templates_directory():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symi Proxy 管理界面</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { padding-top: 20px; }
         .container { max-width: 1200px; }
@@ -398,8 +398,13 @@ def create_templates_directory():
 </html>
 """
     
-    with open(os.path.join(templates_dir, "dashboard.html"), "w", encoding="utf-8") as f:
-        f.write(dashboard_template)
+    try:
+        dashboard_path = os.path.join(templates_dir, "dashboard.html")
+        with open(dashboard_path, "w", encoding="utf-8") as f:
+            f.write(dashboard_template)
+        print(f"已创建模板文件: {dashboard_path}")
+    except Exception as e:
+        print(f"创建模板文件失败: {str(e)}")
 
 def start_web_server(manager, port=8088):
     """启动Web服务器"""

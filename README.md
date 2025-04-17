@@ -3,7 +3,7 @@
 一个支持订阅功能的代理服务器，专为Home Assistant OS (HassOS)设计，可以访问长城防火墙外部世界。
 
 ## 版本信息
-当前版本: 1.0.1
+当前版本: 1.0.2
 
 ## 安装方法
 
@@ -36,7 +36,7 @@
 ## 使用方法
 
 1. 在Home Assistant中安装此Add-on
-2. 配置订阅地址或添加自定义节点
+2. 在Add-on配置页面中设置订阅地址或添加自定义节点
 3. 启动Add-on
 4. 在浏览器中配置代理服务器（地址：hassio的IP，端口：7088）
 5. 通过Home Assistant界面访问Web管理界面，查看节点状态
@@ -51,6 +51,59 @@ https://example.com/api/v1/client/subscribe?token=您的订阅令牌
 
 请将上述URL中的`您的订阅令牌`替换为您获取的实际订阅令牌。
 
+## 支持的订阅格式
+
+本插件支持多种订阅格式：
+
+### 1. JSON格式
+
+```json
+{
+  "nodes": [
+    {
+      "name": "节点1",
+      "address": "server1.example.com",
+      "port": 7088
+    },
+    {
+      "name": "节点2",
+      "address": "server2.example.com",
+      "port": 7088
+    }
+  ]
+}
+```
+
+或简化的JSON格式：
+
+```json
+[
+  {
+    "name": "节点1",
+    "address": "server1.example.com",
+    "port": 7088
+  },
+  {
+    "name": "节点2",
+    "address": "server2.example.com",
+    "port": 7088
+  }
+]
+```
+
+### 2. 文本格式
+
+每行一个节点，支持以下格式：
+```
+节点1|server1.example.com|7088
+节点2|server2.example.com|7088
+server3.example.com:7088 节点3
+```
+
+### 3. Base64编码格式
+
+支持将上述文本或JSON格式进行Base64编码后的订阅。
+
 ## 手动添加节点
 
 1. 在Home Assistant中，进入**设置** -> **加载项** -> **Symi Proxy**
@@ -63,10 +116,6 @@ https://example.com/api/v1/client/subscribe?token=您的订阅令牌
        port: 7088
    ```
 4. 点击**保存**并重启插件
-
-## 订阅格式
-
-本插件支持多种订阅格式，包括JSON格式、文本格式和Base64编码格式。
 
 ## 节点管理
 
