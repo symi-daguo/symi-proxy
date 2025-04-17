@@ -1,13 +1,13 @@
 {
   "name": "Symi Proxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "slug": "symi_proxy",
   "description": "Symi Proxy with subscription support for Home Assistant OS",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "services",
   "boot": "auto",
   "host_network": false,
-  "hassio_api": true,
+  "hassio_api": false,
   "hassio_role": "default",
   "ports": {
     "7088/tcp": 7088,
@@ -19,6 +19,12 @@
   "privileged": ["NET_ADMIN"],
   "url": "https://github.com/symi-daguo/symi-proxy",
   "image": "ghcr.io/symi-daguo/{arch}-addon-symi_proxy",
+  "init": false,
+  "homeassistant_api": false,
+  "docker_api": false,
+  "host_dbus": false,
+  "apparmor": true,
+  "map": [],
   "options": {
     "local_port": 7088,
     "subscription_url": "",
