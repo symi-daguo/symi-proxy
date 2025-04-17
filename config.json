@@ -18,7 +18,7 @@
   "panel_icon": "mdi:transit-connection-variant",
   "privileged": ["NET_ADMIN"],
   "url": "https://github.com/symi-daguo/symi-proxy",
-  "image": "symidaguo/{arch}-addon-symi_proxy",
+  "image": "ghcr.io/symi-daguo/{arch}-addon-symi_proxy",
   "options": {
     "local_port": 7088,
     "subscription_url": "",
