@@ -22,8 +22,9 @@ def load_options():
     # 默认选项
     default_options = {
         "local_port": 7088,
+        "web_port": 8123,
         "subscription_url": "",
-        "subscription_update_interval": 24,
+        "subscription_update_interval": 12,
         "default_node": "auto",
         "custom_nodes": []
     }
@@ -65,7 +66,7 @@ def main():
     manager = ProxyManager(options)
     
     # 启动Web服务器
-    web_port = 8088
+    web_port = options.get("web_port", 8123)
     web_server = start_web_server(manager, web_port)
     
     # 启动代理服务器

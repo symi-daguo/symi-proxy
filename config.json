@@ -1,6 +1,6 @@
 {
   "name": "Symi Proxy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "slug": "symi_proxy",
   "description": "代理管理工具，支持多种订阅格式和节点管理",
   "arch": ["amd64", "armv7", "aarch64"],
@@ -8,7 +8,10 @@
   "boot": "auto",
   "options": {
     "subscription_url": "",
-    "update_interval": 12,
-    "web_port": 8123
+    "subscription_update_interval": 12,
+    "web_port": 8123,
+    "local_port": 7088,
+    "default_node": "auto",
+    "custom_nodes": []
   }
 }
