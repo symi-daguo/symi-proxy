@@ -1,0 +1,29 @@
+{
+    "local_port": 7088,
+    "web_port": 8123,
+    "subscription_url": "https://rss.rss-node.com/link/rjzfONPggKdGMI3B?mu=1",
+    "subscription_update_interval": 12,
+    "default_node": "auto",
+    "custom_nodes": [
+        {
+            "name": "自定义节点-1",
+            "server": "d3.alibabamysql.com",
+            "server_port": 7001,
+            "local_address": "127.0.0.1",
+            "local_port": 1080,
+            "timeout": 300,
+            "workers": 1,
+            "password": "di15PV",
+            "method": "chacha20-ietf",
+            "obfs": "tls1.2_ticket_auth",
+            "obfs_param": "90f3b72291.www.gov.hk",
+            "protocol": "auth_aes128_md5",
+            "protocol_param": "72291:gMe1NM"
+        },
+        {
+            "name": "普通节点",
+            "address": "server3.example.com",
+            "port": 7088
+        }
+    ]
+}

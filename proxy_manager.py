@@ -112,31 +112,57 @@ class ProxyManager:
     def load_custom_nodes(self):
         """加载自定义节点"""
         custom_nodes = self.options.get("custom_nodes", [])
+        loaded_count = 0
         for node_info in custom_nodes:
-            # 支持两种格式：简单格式(name,address,port)和完整格式(包括SS/SSR参数)
-            if "server" in node_info:
-                # SS/SSR完整格式
-                name = node_info.get("name", f"自定义节点-{len(self.nodes)+1}")
-                node = Node(
-                    name=name,
-                    address=node_info.get("server"),
-                    port=node_info.get("server_port"),
-                    password=node_info.get("password"),
-                    method=node_info.get("method"),
-                    obfs=node_info.get("obfs"),
-                    obfs_param=node_info.get("obfs_param"),
-                    protocol=node_info.get("protocol"),
-                    protocol_param=node_info.get("protocol_param")
-                )
-            else:
-                # 简单格式
-                node = Node(
-                    name=node_info.get("name", f"自定义节点-{len(self.nodes)+1}"),
-                    address=node_info.get("address"),
-                    port=node_info.get("port")
-                )
-            self.nodes.append(node)
-        logger.info(f"已加载 {len(custom_nodes)} 个自定义节点")
+            try:
+                # 支持两种格式：简单格式(name,address,port)和完整格式(包括SS/SSR参数)
+                if "server" in node_info:
+                    # SS/SSR完整格式
+                    name = node_info.get("name", f"自定义节点-{len(self.nodes)+1}")
+                    server = node_info.get("server")
+                    server_port = node_info.get("server_port")
+                    
+                    # 确保必要字段存在
+                    if not server or not server_port:
+                        logger.warning(f"节点 {name} 缺少必要字段 server 或 server_port，跳过")
+                        continue
+                    
+                    node = Node(
+                        name=name,
+                        address=server,
+                        port=server_port,
+                        password=node_info.get("password"),
+                        method=node_info.get("method"),
+                        obfs=node_info.get("obfs"),
+                        obfs_param=node_info.get("obfs_param"),
+                        protocol=node_info.get("protocol"),
+                        protocol_param=node_info.get("protocol_param")
+                    )
+                elif "address" in node_info and "port" in node_info:
+                    # 简单格式
+                    node = Node(
+                        name=node_info.get("name", f"自定义节点-{len(self.nodes)+1}"),
+                        address=node_info.get("address"),
+                        port=node_info.get("port")
+                    )
+                else:
+                    logger.warning(f"节点格式不正确，缺少必要字段，跳过")
+                    continue
+                
+                self.nodes.append(node)
+                loaded_count += 1
+            except Exception as e:
+                logger.error(f"加载自定义节点失败: {str(e)}")
+        
+        if loaded_count > 0:
+            logger.info(f"已加载 {loaded_count} 个自定义节点")
+        else:
+            logger.warning("没有加载任何自定义节点")
+            
+        # 如果没有节点，尝试从订阅加载
+        if not self.nodes and self.options.get("subscription_url"):
+            logger.info("尝试从订阅加载节点")
+            self.update_subscription()
 
     def update_subscription(self):
         """更新订阅"""
@@ -324,12 +350,14 @@ class ProxyManager:
             # 如果没有节点，返回False
             if not self.nodes:
                 logger.warning("没有可用节点")
+                # 保持current_node不变
                 return False
             
             # 检查所有节点的可用性
             available_nodes = self.check_all_nodes()
             if not available_nodes:
                 logger.warning("没有可用节点")
+                # 保持current_node不变
                 return False
             
             # 根据选择器选择节点
@@ -349,15 +377,21 @@ class ProxyManager:
                     return self.select_node("auto")
             else:
                 # 按名称选择节点
+                found = False
                 for node in self.nodes:
                     if node.name == node_selector and node.status == "online":
                         self.current_node = node
                         logger.info(f"选择节点: {self.current_node.name}")
-                        return True
+                        found = True
+                        break
                 
                 # 如果找不到指定节点或节点不可用，自动选择最快节点
-                logger.warning(f"节点 '{node_selector}' 不存在或不可用，自动选择最快节点")
-                return self.select_node("auto")
+                if not found:
+                    logger.warning(f"节点 '{node_selector}' 不存在或不可用，自动选择最快节点")
+                    if available_nodes:
+                        return self.select_node("auto")
+                    else:
+                        return False
             
             return True
 
@@ -489,8 +523,17 @@ class ProxyManager:
         """启动代理服务器"""
         local_port = self.options.get("local_port", 7088)
         
-        # 设置iptables规则，防止RST包
-        os.system(f"iptables -A INPUT -p tcp --sport {self.current_node.port} --tcp-flags RST RST -j DROP")
+        # 检查当前节点是否存在
+        if not self.current_node:
+            logger.error("没有可用节点，无法启动代理服务器")
+            raise Exception("没有可用节点，请检查配置或订阅地址")
+        
+        # 设置iptables规则，防止RST包（仅在Linux环境下）
+        if os.name != 'nt':  # 非Windows系统
+            try:
+                os.system(f"iptables -A INPUT -p tcp --sport {self.current_node.port} --tcp-flags RST RST -j DROP")
+            except Exception as e:
+                logger.warning(f"设置iptables规则失败: {str(e)}")
         
         # 创建socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

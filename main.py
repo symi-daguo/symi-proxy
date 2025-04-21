@@ -51,6 +51,12 @@ def load_options():
 def start_proxy_server(manager):
     """启动代理服务器"""
     try:
+        # 检查是否有可用节点
+        if not manager.nodes or not any(node.status == "online" for node in manager.nodes):
+            logger.warning("没有可用节点，跳过启动代理服务器")
+            print("警告: 没有可用节点，代理服务器未启动。请检查网络连接或配置文件中的节点信息。")
+            print("您仍然可以通过Web界面(端口: " + str(manager.options.get("web_port", 8123)) + ")管理节点。")
+            return
         manager.start_proxy_server()
     except Exception as e:
         logger.error(f"启动代理服务器失败: {str(e)}")
