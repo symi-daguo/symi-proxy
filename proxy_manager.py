@@ -574,31 +574,89 @@ class ProxyManager:
         sel.register(sock1, EVENT_READ)
         sel.register(sock2, EVENT_READ)
 
+        # 获取连接信息用于日志
+        try:
+            local_addr = sock1.getpeername()
+            remote_addr = sock2.getpeername()
+            connection_info = f"本地({local_addr[0]}:{local_addr[1]}) <-> 远程({remote_addr[0]}:{remote_addr[1]})"
+            logger.info(f"开始数据转发: {connection_info}")
+        except:
+            connection_info = "未知连接"
+
+        # 统计变量
+        bytes_sent = 0
+        bytes_received = 0
+        last_log_time = time.time()
+
         while True:
-            events = sel.select()
-            for (key, _) in events:
-                try:
-                    data_in = key.fileobj.recv(8192)
-                except ConnectionResetError as e:
-                    logger.error(f"连接重置: {str(e)}")
-                    sock1.close()
-                    sock2.close()
-                    self.update_stats(connection_change=-1)
-                    return
+            try:
+                events = sel.select(timeout=1.0)
 
-                if data_in:
-                    # 更新流量统计
-                    self.update_stats(traffic=len(data_in))
+                # 定期记录流量统计
+                current_time = time.time()
+                if current_time - last_log_time > 30:  # 每30秒记录一次
+                    if bytes_sent > 0 or bytes_received > 0:
+                        logger.info(f"连接 {connection_info} 流量统计: 发送={bytes_sent}字节, 接收={bytes_received}字节")
+                    last_log_time = current_time
 
-                    if key.fileobj == sock1:
-                        sock2.send(self.xor_encode(data_in))
+                if not events:  # 超时，继续循环
+                    continue
+
+                for (key, _) in events:
+                    try:
+                        data_in = key.fileobj.recv(8192)
+                    except ConnectionResetError as e:
+                        logger.error(f"连接重置: {str(e)}")
+                        sock1.close()
+                        sock2.close()
+                        self.update_stats(connection_change=-1)
+                        logger.info(f"连接关闭 {connection_info}: 连接重置")
+                        return
+                    except Exception as e:
+                        logger.error(f"数据接收错误: {str(e)}")
+                        sock1.close()
+                        sock2.close()
+                        self.update_stats(connection_change=-1)
+                        logger.info(f"连接关闭 {connection_info}: 数据接收错误")
+                        return
+
+                    if data_in:
+                        # 更新流量统计
+                        data_len = len(data_in)
+                        self.update_stats(traffic=data_len)
+
+                        try:
+                            if key.fileobj == sock1:
+                                # 本地 -> 远程
+                                bytes_sent += data_len
+                                sock2.send(self.xor_encode(data_in))
+                            else:
+                                # 远程 -> 本地
+                                bytes_received += data_len
+                                sock1.send(self.xor_encode(data_in))
+                        except Exception as e:
+                            logger.error(f"数据发送错误: {str(e)}")
+                            sock1.close()
+                            sock2.close()
+                            self.update_stats(connection_change=-1)
+                            logger.info(f"连接关闭 {connection_info}: 数据发送错误")
+                            return
                     else:
-                        sock1.send(self.xor_encode(data_in))
-                else:
+                        sock1.close()
+                        sock2.close()
+                        self.update_stats(connection_change=-1)
+                        logger.info(f"连接关闭 {connection_info}: 正常关闭, 总流量: 发送={bytes_sent}字节, 接收={bytes_received}字节")
+                        return
+            except Exception as e:
+                logger.error(f"代理处理错误: {str(e)}")
+                try:
                     sock1.close()
                     sock2.close()
-                    self.update_stats(connection_change=-1)
-                    return
+                except:
+                    pass
+                self.update_stats(connection_change=-1)
+                logger.info(f"连接关闭 {connection_info}: 代理处理错误")
+                return
 
     def handle_connection(self, sock_in, addr):
         """处理新的连接请求"""
@@ -613,11 +671,17 @@ class ProxyManager:
             self.update_stats(connection_change=-1)
             return
 
+        # 记录详细的节点信息
+        logger.info(f"使用节点: {node.name} ({node.address}:{node.port})")
+        logger.info(f"节点详细信息: 加密方式={node.method}, 协议={node.protocol}, 混淆={node.obfs}")
+
         # 建立远程连接
         sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_remote.settimeout(15)
         try:
+            logger.info(f"正在连接到远程节点: {node.address}:{node.port}...")
             sock_remote.connect((node.address, node.port))
+            logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
         except Exception as e:
             logger.error(f"连接到远程节点 {node.name} ({node.address}:{node.port}) 失败: {str(e)}")
 
@@ -625,10 +689,11 @@ class ProxyManager:
             if self.select_node("auto"):
                 node = self.get_current_node()
                 try:
+                    logger.info(f"尝试使用备用节点: {node.name} ({node.address}:{node.port})")
                     sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock_remote.settimeout(15)
                     sock_remote.connect((node.address, node.port))
-                    logger.info(f"已切换到备用节点 {node.name}")
+                    logger.info(f"已切换到备用节点 {node.name} 并成功连接")
                 except Exception as e:
                     logger.error(f"连接到备用节点失败: {str(e)}")
                     sock_in.close()
@@ -641,6 +706,7 @@ class ProxyManager:
                 return
 
         # 在本地连接与远程连接间转发数据
+        logger.info(f"开始在本地连接 {addr[0]}:{addr[1]} 和远程节点 {node.address}:{node.port} 之间转发数据")
         self.proxy_process(sock_in, sock_remote)
 
     def start_proxy_server(self):
