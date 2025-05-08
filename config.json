@@ -1,6 +1,6 @@
 {
   "name": "Symi Proxy",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "slug": "symi_proxy",
   "description": "代理管理工具，支持多种订阅格式和节点管理",
   "arch": ["amd64", "armv7", "aarch64"],
