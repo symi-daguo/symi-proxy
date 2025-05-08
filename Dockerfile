@@ -4,7 +4,7 @@ FROM alpine:3.17
 LABEL \
     io.hass.name="Symi Proxy" \
     io.hass.description="Symi Proxy with subscription support for Home Assistant OS" \
-    io.hass.version="1.0.11" \
+    io.hass.version="1.1.0" \
     io.hass.type="addon" \
     io.hass.arch="armhf|armv7|aarch64|amd64|i386" \
     maintainer="Symi Proxy Team" \
@@ -14,7 +14,7 @@ LABEL \
     org.opencontainers.image.url="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.source="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.documentation="https://github.com/symi-daguo/symi-proxy/blob/master/README.md" \
-    org.opencontainers.image.version="1.0.11"
+    org.opencontainers.image.version="1.1.0"
 
 # 设置环境变量
 ENV LANG="C.UTF-8" \
