@@ -19,9 +19,22 @@ if ! command -v iptables >/dev/null 2>&1; then
     apk add --no-cache iptables
 fi
 
-# 确保 templates 目录存在
+# 确保 templates 目录存在并有正确的权限
 mkdir -p /app/templates
+chmod 755 /app/templates
+
+# 检查Python和依赖
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Python3 not found, installing..."
+    apk add --no-cache python3
+fi
+
+if ! python3 -c "import requests" >/dev/null 2>&1; then
+    echo "Python requests module not found, installing..."
+    pip3 install --no-cache-dir requests
+fi
 
 # 运行主程序
 cd /app
-exec python3 /app/main.py 
+echo "启动Symi Proxy主程序..."
+exec python3 /app/main.py

@@ -4,7 +4,7 @@ FROM alpine:3.19
 LABEL \
     io.hass.name="Symi Proxy" \
     io.hass.description="Symi Proxy with subscription support for Home Assistant OS" \
-    io.hass.version="1.0.2" \
+    io.hass.version="1.0.7" \
     io.hass.type="addon" \
     io.hass.arch="armhf|armv7|aarch64|amd64|i386" \
     maintainer="Symi Proxy Team" \
@@ -14,7 +14,7 @@ LABEL \
     org.opencontainers.image.url="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.source="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.documentation="https://github.com/symi-daguo/symi-proxy/blob/master/README.md" \
-    org.opencontainers.image.version="1.0.2"
+    org.opencontainers.image.version="1.0.7"
 
 # 设置环境变量
 ENV LANG="C.UTF-8" \
@@ -24,18 +24,17 @@ ENV LANG="C.UTF-8" \
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories && \
     echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories && \
     apk update && \
-    apk add --no-cache python3 && \
-    apk add --no-cache py3-pip && \
-    apk add --no-cache iptables bash jq && \
-    pip3 install --no-cache-dir --break-system-packages requests
+    apk add --no-cache python3 py3-pip iptables bash jq curl wget && \
+    pip3 install --no-cache-dir requests
 
 # 创建目录
 RUN mkdir -p /app/templates
 
 # 复制文件
 COPY *.py /app/
-COPY templates /app/templates
 COPY run.sh /
+# 确保templates目录存在
+RUN mkdir -p /app/templates
 
 # 设置权限
 RUN chmod a+x /app/*.py \
@@ -43,9 +42,10 @@ RUN chmod a+x /app/*.py \
 
 WORKDIR /app
 
-# 健康检查
+# 健康检查 - 使用环境变量获取web_port，默认为8123
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
-  CMD wget --quiet --tries=1 --spider http://localhost:8123 || exit 1
+  CMD PORT=$(jq -r '.web_port // 8123' /data/options.json 2>/dev/null || echo 8123) && \
+      wget --quiet --tries=1 --spider http://localhost:${PORT} || exit 1
 
 # 启动命令
 CMD ["/run.sh"]

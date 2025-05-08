@@ -1,193 +1,75 @@
-# Home Assistant Add-on: Symi Proxy
+# Symi Proxy
 
-一个支持订阅功能的代理服务器，专为Home Assistant OS (HassOS)设计，可以访问长城防火墙外部世界。
+Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 
-## 版本信息
-当前版本: 1.0.6
+## 版本更新
 
-## 最新更新
+当前版本：1.0.7
 
-- 修复了启动时出现的 `'NoneType' object has no attribute 'port'` 错误
-- 增强了节点加载逻辑，确保自定义节点能够正确加载
-- 改进了程序在没有可用节点时的处理方式，避免崩溃
-- 增加了更详细的错误提示和日志信息
+## 最新更新内容
 
-## 安装方法
+### 1.0.7 版本 (2025年5月8日)
+- 修复了订阅解析问题，增强了Base64解码功能
+- 改进了iptables规则设置，提高了稳定性
+- 优化了健康检查机制，避免端口冲突
+- 增强了错误处理和日志记录
+- 更新了文档，添加了更详细的使用说明
 
-1. 在Home Assistant中，进入**设置** -> **加载项** -> **加载项商店**
-2. 点击右上角的三点菜单，选择**仓库**
-3. 添加仓库URL：`https://github.com/symi-daguo/symi-proxy`
-4. 添加成功后，刷新页面，在加载项商店中找到并安装Symi Proxy
+### 1.0.6 版本
+- 修复了Alpine Linux包管理器安装命令的问题
+- 修正了Alpine仓库URL格式，移除了多余的引号
+- 统一了所有配置文件中的版本号
 
-## 关于
+## 安装说明
 
-本Add-on启动后，将在本地开放一个端口（默认为7088）。
+1. 在Home Assistant中添加此仓库：https://github.com/symi-daguo/symi-proxy
+2. 安装Symi Proxy插件
+3. 配置您的订阅URL或自定义节点
+4. 启动插件
 
-在浏览器中配置hassio的ip与此端口，作为proxy，可以访问墙外世界。
+## 详细配置说明
 
-## 功能
+### 订阅URL
+在配置页面中填入您的订阅URL，插件会自动解析并获取节点信息。支持的订阅格式包括：
+- Base64编码的文本
+- JSON格式
+- 纯文本格式（每行一个节点）
 
-- 支持添加订阅地址，自动获取和更新节点
-- 支持自定义更新间隔（默认24小时更新一次）
-- 支持手动添加自定义节点
-- 提供Web界面，方便管理节点和查看状态
+### 自定义节点
+如果您不使用订阅，也可以手动添加节点信息。支持两种格式：
+1. 简单格式：`{"name": "节点名称", "address": "服务器地址", "port": 端口号}`
+2. 完整格式：包含加密方式、密码等信息的完整配置
 
-## 配置选项
+### 端口设置
+- `local_port`: 本地代理端口，默认7088
+- `web_port`: Web管理界面端口，默认8123
 
-- `local_port`: 本地代理端口（默认：7088）
-- `subscription_url`: 订阅地址URL（可选）
-- `subscription_update_interval`: 订阅更新间隔，单位小时（默认：24）
-- `default_node`: 默认使用的节点（auto表示自动选择最快节点）
-- `custom_nodes`: 自定义节点列表
+## 使用说明
 
-## 使用方法
+1. 安装并启动插件后，访问 `http://your-homeassistant:8123` 进入Web管理界面
+2. 在界面中可以查看所有节点状态、选择节点、更新订阅
+3. 选择节点后，插件会自动启动代理服务
+4. 在Home Assistant中配置网络使用此代理，即可正常访问网络
 
-1. 在Home Assistant中安装此Add-on
-2. 在Add-on配置页面中设置订阅地址或添加自定义节点
-3. 启动Add-on
-4. 在浏览器中配置代理服务器（地址：hassio的IP，端口：7088）
-5. 通过Home Assistant界面访问Web管理界面，查看节点状态
+## 功能特点
+- 支持多种订阅格式
+- 支持自定义节点配置
+- 提供Web界面进行管理
+- 自动更新订阅
+- 自动检测节点可用性
+- 自动选择最佳节点
 
-## 订阅地址
+## 问题排查
 
-您可以使用以下格式的订阅地址：
+如果遇到"安装加载项失败"错误，请确认：
+1. 您的Home Assistant可以访问互联网
+2. Alpine Linux仓库可以正常访问
 
-```
-https://example.com/api/v1/client/subscribe?token=您的订阅令牌
-```
+如果插件安装成功但无法连接网络：
+1. 检查订阅URL是否有效
+2. 检查节点是否可用（在Web界面中可以查看节点状态）
+3. 检查Home Assistant网络配置是否正确使用了代理
 
-请将上述URL中的`您的订阅令牌`替换为您获取的实际订阅令牌。
+## 联系方式
 
-## 支持的订阅格式
-
-本插件支持多种订阅格式：
-
-### 1. SSR/SS格式（推荐）
-
-```json
-{
-  "server": "server1.example.com",
-  "server_port": 7088,
-  "password": "password123",
-  "method": "rc4-md5",
-  "obfs": "plain",
-  "obfs_param": "example.com",
-  "protocol": "auth_aes128_md5",
-  "protocol_param": "12345:abcde"
-}
-```
-
-或多节点格式：
-
-```json
-[
-  {
-    "name": "节点1",
-    "server": "server1.example.com",
-    "server_port": 7088,
-    "password": "password123",
-    "method": "rc4-md5",
-    "obfs": "plain",
-    "obfs_param": "example.com",
-    "protocol": "auth_aes128_md5",
-    "protocol_param": "12345:abcde"
-  },
-  {
-    "name": "节点2",
-    "server": "server2.example.com",
-    "server_port": 7088,
-    "password": "password456",
-    "method": "rc4-md5",
-    "obfs": "plain",
-    "protocol": "auth_aes128_md5"
-  }
-]
-```
-
-### 2. 简单格式
-
-```json
-[
-  {
-    "name": "节点1",
-    "address": "server1.example.com",
-    "port": 7088
-  },
-  {
-    "name": "节点2",
-    "address": "server2.example.com",
-    "port": 7088
-  }
-]
-```
-
-### 3. 文本格式
-
-每行一个节点，支持以下格式：
-```
-节点1|server1.example.com|7088
-节点2|server2.example.com|7088
-server3.example.com:7088 节点3
-```
-
-### 4. Base64编码格式
-
-支持将上述文本或JSON格式进行Base64编码后的订阅。
-
-## 手动添加节点
-
-1. 在Home Assistant中，进入**设置** -> **加载项** -> **Symi Proxy**
-2. 点击**配置**选项卡
-3. 在`custom_nodes`部分添加您的节点信息：
-
-   ### SSR格式（推荐）
-   ```yaml
-   custom_nodes:
-     - server: "server.example.com"
-       server_port: 7088
-       password: "password123"
-       method: "rc4-md5"
-       obfs: "plain"
-       obfs_param: "example.com"
-       protocol: "auth_aes128_md5"
-       protocol_param: "12345:abcde"
-   ```
-
-   ### 简单格式
-   ```yaml
-   custom_nodes:
-     - name: "节点名称"
-       address: "节点地址"
-       port: 7088
-   ```
-
-4. 点击**保存**并重启插件
-
-## 节点管理
-
-- 系统会根据配置的更新间隔自动更新订阅内容
-- 设置`default_node`为`auto`时，系统会自动选择延迟最低的节点
-- 如果当前节点连接失败，系统会自动切换到其他可用节点
-
-## 更新历史
-
-### 1.0.5
-- 修复Docker镜像访问问题
-- 简化容器结构，直接使用Alpine基础镜像
-- 移除复杂的S6 Overlay，提高兼容性
-
-### 1.0.4
-- 修复Docker镜像问题
-- 更新为2025年Home Assistant标准格式
-- 增强SSR/SS节点支持
-
-### 1.0.3
-- 支持SSR/SS节点格式
-- 改进订阅解析
-
-### 1.0.2
-- 完善订阅支持文档
-- 增加模板目录
-
-### 1.0.1
-- 首次发布版本
+如有问题，请在GitHub仓库提交Issue。
