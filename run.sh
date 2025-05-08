@@ -26,12 +26,18 @@ chmod 755 /app/templates
 # 检查Python和依赖
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Python3 not found, installing..."
+    apk update
     apk add --no-cache python3
 fi
 
-if ! python3 -c "import requests" >/dev/null 2>&1; then
+if ! python3 -c "import requests" 2>/dev/null; then
     echo "Python requests module not found, installing..."
-    pip3 install --no-cache-dir requests
+    if command -v pip3 >/dev/null 2>&1; then
+        pip3 install requests
+    else
+        apk add --no-cache py3-pip
+        pip3 install requests
+    fi
 fi
 
 # 运行主程序
