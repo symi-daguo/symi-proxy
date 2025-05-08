@@ -60,15 +60,34 @@ Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 - 纯文本格式（每行一个节点）
 
 ### 自定义节点
-如果您不使用订阅，可以开启"使用自定义节点"选项，然后填写以下信息：
+如果您不使用订阅，可以开启"使用自定义节点"选项，然后填写节点信息。
+
+#### 快速配置方法
+您可以直接复制以下配置信息，粘贴到配置界面的"自定义节点"文本框中：
+
+```json
+{
+  "server": "d3.alibabamysql.com",
+  "server_port": 1127,
+  "password": "di15PV",
+  "method": "rc4-md5",
+  "protocol": "auth_aes128_md5",
+  "protocol_param": "72291:gMe1NM",
+  "obfs": "tls1.2_ticket_auth",
+  "obfs_param": "90f3b72291.www.gov.hk"
+}
+```
+
+#### 手动配置字段说明
+如果您需要手动配置，以下是各字段的说明：
 - `server`: 服务器地址，例如 `d3.alibabamysql.com`
 - `server_port`: 服务器端口，例如 `1127`
-- `password`: 密码
+- `password`: 密码，例如 `di15PV`
 - `method`: 加密方式，例如 `rc4-md5`
-- `obfs`: 混淆方式（可选）
-- `obfs_param`: 混淆参数（可选）
-- `protocol`: 协议（可选）
-- `protocol_param`: 协议参数（可选）
+- `protocol`: 协议，例如 `auth_aes128_md5`
+- `protocol_param`: 协议参数，例如 `72291:gMe1NM`
+- `obfs`: 混淆方式，例如 `tls1.2_ticket_auth`
+- `obfs_param`: 混淆参数，例如 `90f3b72291.www.gov.hk`
 
 ### 端口设置
 - `local_port`: 本地代理端口，默认7088

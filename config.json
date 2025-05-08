@@ -15,15 +15,14 @@
     "default_node": "auto",
     "use_custom_node": true,
     "custom_node": {
-      "name": "自定义节点-1",
-      "server": "server.example.com",
-      "server_port": 8388,
-      "password": "password123",
-      "method": "aes-256-cfb",
-      "obfs": "plain",
-      "obfs_param": "example.com",
-      "protocol": "origin",
-      "protocol_param": ""
+      "server": "d3.alibabamysql.com",
+      "server_port": 1127,
+      "password": "di15PV",
+      "method": "rc4-md5",
+      "protocol": "auth_aes128_md5",
+      "protocol_param": "72291:gMe1NM",
+      "obfs": "tls1.2_ticket_auth",
+      "obfs_param": "90f3b72291.www.gov.hk"
     }
   },
   "schema": {
