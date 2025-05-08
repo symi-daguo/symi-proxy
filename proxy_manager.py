@@ -171,17 +171,30 @@ class ProxyManager:
             logger.warning("未配置订阅地址")
             return False
 
+        # 修正订阅URL格式
+        if subscription_url.endswith("?mu") and not subscription_url.endswith("?mu=1"):
+            subscription_url = subscription_url.replace("?mu", "?mu=1")
+            logger.info(f"修正订阅URL格式: {subscription_url}")
+
         try:
             logger.info(f"正在更新订阅: {subscription_url}")
-            response = requests.get(subscription_url, timeout=10)
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(subscription_url, headers=headers, timeout=10)
             if response.status_code != 200:
                 logger.error(f"订阅更新失败，状态码: {response.status_code}")
                 return False
 
             # 解析订阅内容
             content = response.text.strip()
+            logger.info(f"获取到订阅内容，长度: {len(content)}")
+
+            # 尝试Base64解码
             try:
-                # 尝试Base64解码
+                # 移除可能的URL安全字符
+                content = content.replace('-', '+').replace('_', '/')
+
                 # 添加填充字符以确保长度是4的倍数
                 padding_needed = len(content) % 4
                 if padding_needed:
@@ -190,7 +203,7 @@ class ProxyManager:
                 # 尝试解码
                 decoded_content = base64.b64decode(content).decode('utf-8')
                 content = decoded_content
-                logger.info("成功解码Base64订阅内容")
+                logger.info(f"成功解码Base64订阅内容，解码后长度: {len(content)}")
             except Exception as e:
                 # 如果解码失败，使用原始内容
                 logger.warning(f"Base64解码失败，使用原始内容: {str(e)}")
@@ -199,114 +212,217 @@ class ProxyManager:
             # 解析节点信息
             nodes = []
 
-            # 尝试解析为JSON
-            try:
-                data = json.loads(content)
+            # 尝试解析SSR链接
+            def parse_ssr_link(link):
+                if link.startswith('ssr://'):
+                    try:
+                        # 移除前缀
+                        encoded = link[6:]
+                        # Base64解码
+                        encoded = encoded.replace('-', '+').replace('_', '/')
+                        padding_needed = len(encoded) % 4
+                        if padding_needed:
+                            encoded += '=' * (4 - padding_needed)
 
-                # 处理单个节点的情况
-                if isinstance(data, dict) and "server" in data and "server_port" in data:
-                    # SS/SSR单节点格式
-                    name = data.get("name", f"节点-1")
-                    nodes.append(Node(
-                        name=name,
-                        address=data.get("server"),
-                        port=data.get("server_port"),
-                        password=data.get("password"),
-                        method=data.get("method"),
-                        obfs=data.get("obfs"),
-                        obfs_param=data.get("obfs_param"),
-                        protocol=data.get("protocol"),
-                        protocol_param=data.get("protocol_param")
-                    ))
+                        decoded = base64.b64decode(encoded).decode('utf-8')
 
-                # 处理节点数组
-                elif isinstance(data, list):
-                    for i, item in enumerate(data):
-                        if isinstance(item, dict):
-                            if "server" in item and "server_port" in item:
-                                # SS/SSR节点格式
-                                name = item.get("name", f"节点-{i+1}")
-                                nodes.append(Node(
-                                    name=name,
-                                    address=item.get("server"),
-                                    port=item.get("server_port"),
-                                    password=item.get("password"),
-                                    method=item.get("method"),
-                                    obfs=item.get("obfs"),
-                                    obfs_param=item.get("obfs_param"),
-                                    protocol=item.get("protocol"),
-                                    protocol_param=item.get("protocol_param")
-                                ))
-                            elif "name" in item and "address" in item and "port" in item:
-                                # 简单格式
-                                nodes.append(Node(
-                                    name=item["name"],
-                                    address=item["address"],
-                                    port=item["port"]
-                                ))
+                        # 解析格式：server:port:protocol:method:obfs:base64pass/?obfsparam=base64param&protoparam=base64param&remarks=base64remarks
+                        parts = decoded.split(':')
+                        if len(parts) >= 6:
+                            server = parts[0]
+                            port = int(parts[1])
+                            protocol = parts[2]
+                            method = parts[3]
+                            obfs = parts[4]
 
-                # 处理包含nodes字段的格式
-                elif isinstance(data, dict) and "nodes" in data and isinstance(data["nodes"], list):
-                    for i, item in enumerate(data["nodes"]):
-                        if isinstance(item, dict):
-                            if "server" in item and "server_port" in item:
-                                # SS/SSR节点格式
-                                name = item.get("name", f"节点-{i+1}")
-                                nodes.append(Node(
-                                    name=name,
-                                    address=item.get("server"),
-                                    port=item.get("server_port"),
-                                    password=item.get("password"),
-                                    method=item.get("method"),
-                                    obfs=item.get("obfs"),
-                                    obfs_param=item.get("obfs_param"),
-                                    protocol=item.get("protocol"),
-                                    protocol_param=item.get("protocol_param")
-                                ))
-                            elif "name" in item and "address" in item and "port" in item:
-                                # 简单格式
-                                nodes.append(Node(
-                                    name=item["name"],
-                                    address=item["address"],
-                                    port=item["port"]
-                                ))
+                            # 处理密码和参数
+                            pass_and_params = parts[5].split('/?')
+                            password_b64 = pass_and_params[0]
+                            # Base64解码密码
+                            password_b64 = password_b64.replace('-', '+').replace('_', '/')
+                            padding_needed = len(password_b64) % 4
+                            if padding_needed:
+                                password_b64 += '=' * (4 - padding_needed)
+                            password = base64.b64decode(password_b64).decode('utf-8')
 
-            except json.JSONDecodeError:
-                # 如果不是JSON，尝试按行解析
+                            # 解析参数
+                            obfs_param = ""
+                            protocol_param = ""
+                            remarks = f"SSR节点-{len(nodes)+1}"
+
+                            if len(pass_and_params) > 1:
+                                params = pass_and_params[1].split('&')
+                                for param in params:
+                                    if param.startswith('obfsparam='):
+                                        obfs_param_b64 = param[10:]
+                                        if obfs_param_b64:
+                                            obfs_param_b64 = obfs_param_b64.replace('-', '+').replace('_', '/')
+                                            padding_needed = len(obfs_param_b64) % 4
+                                            if padding_needed:
+                                                obfs_param_b64 += '=' * (4 - padding_needed)
+                                            obfs_param = base64.b64decode(obfs_param_b64).decode('utf-8')
+                                    elif param.startswith('protoparam='):
+                                        protocol_param_b64 = param[11:]
+                                        if protocol_param_b64:
+                                            protocol_param_b64 = protocol_param_b64.replace('-', '+').replace('_', '/')
+                                            padding_needed = len(protocol_param_b64) % 4
+                                            if padding_needed:
+                                                protocol_param_b64 += '=' * (4 - padding_needed)
+                                            protocol_param = base64.b64decode(protocol_param_b64).decode('utf-8')
+                                    elif param.startswith('remarks='):
+                                        remarks_b64 = param[8:]
+                                        if remarks_b64:
+                                            remarks_b64 = remarks_b64.replace('-', '+').replace('_', '/')
+                                            padding_needed = len(remarks_b64) % 4
+                                            if padding_needed:
+                                                remarks_b64 += '=' * (4 - padding_needed)
+                                            remarks = base64.b64decode(remarks_b64).decode('utf-8')
+
+                            return Node(
+                                name=remarks,
+                                address=server,
+                                port=port,
+                                password=password,
+                                method=method,
+                                obfs=obfs,
+                                obfs_param=obfs_param,
+                                protocol=protocol,
+                                protocol_param=protocol_param
+                            )
+                    except Exception as e:
+                        logger.warning(f"解析SSR链接失败: {str(e)}")
+                return None
+
+            # 首先尝试解析为SSR链接列表
+            if content.startswith('ssr://'):
+                # 按行分割
                 lines = content.split('\n')
                 for line in lines:
                     line = line.strip()
                     if not line:
                         continue
 
-                    # 尝试解析格式：name|address|port
-                    parts = line.split('|')
-                    if len(parts) >= 3:
-                        try:
-                            nodes.append(Node(
-                                name=parts[0],
-                                address=parts[1],
-                                port=int(parts[2])
-                            ))
-                            continue
-                        except:
-                            pass
+                    node = parse_ssr_link(line)
+                    if node:
+                        nodes.append(node)
+                        logger.info(f"成功解析SSR链接: {node.name}")
 
-                    # 尝试解析格式：address:port name
-                    parts = line.split(' ', 1)
-                    if len(parts) >= 1:
-                        addr_parts = parts[0].split(':')
-                        if len(addr_parts) == 2:
+            # 如果没有解析出节点，尝试解析为JSON
+            if not nodes:
+                try:
+                    data = json.loads(content)
+
+                    # 处理单个节点的情况
+                    if isinstance(data, dict) and "server" in data and "server_port" in data:
+                        # SS/SSR单节点格式
+                        name = data.get("name", f"节点-1")
+                        nodes.append(Node(
+                            name=name,
+                            address=data.get("server"),
+                            port=data.get("server_port"),
+                            password=data.get("password"),
+                            method=data.get("method"),
+                            obfs=data.get("obfs"),
+                            obfs_param=data.get("obfs_param"),
+                            protocol=data.get("protocol"),
+                            protocol_param=data.get("protocol_param")
+                        ))
+                        logger.info(f"成功解析JSON单节点: {name}")
+
+                    # 处理节点数组
+                    elif isinstance(data, list):
+                        for i, item in enumerate(data):
+                            if isinstance(item, dict):
+                                if "server" in item and "server_port" in item:
+                                    # SS/SSR节点格式
+                                    name = item.get("name", f"节点-{i+1}")
+                                    nodes.append(Node(
+                                        name=name,
+                                        address=item.get("server"),
+                                        port=item.get("server_port"),
+                                        password=item.get("password"),
+                                        method=item.get("method"),
+                                        obfs=item.get("obfs"),
+                                        obfs_param=item.get("obfs_param"),
+                                        protocol=item.get("protocol"),
+                                        protocol_param=item.get("protocol_param")
+                                    ))
+                                    logger.info(f"成功解析JSON数组节点: {name}")
+                                elif "name" in item and "address" in item and "port" in item:
+                                    # 简单格式
+                                    nodes.append(Node(
+                                        name=item["name"],
+                                        address=item["address"],
+                                        port=item["port"]
+                                    ))
+                                    logger.info(f"成功解析简单格式节点: {item['name']}")
+
+                    # 处理包含nodes字段的格式
+                    elif isinstance(data, dict) and "nodes" in data and isinstance(data["nodes"], list):
+                        for i, item in enumerate(data["nodes"]):
+                            if isinstance(item, dict):
+                                if "server" in item and "server_port" in item:
+                                    # SS/SSR节点格式
+                                    name = item.get("name", f"节点-{i+1}")
+                                    nodes.append(Node(
+                                        name=name,
+                                        address=item.get("server"),
+                                        port=item.get("server_port"),
+                                        password=item.get("password"),
+                                        method=item.get("method"),
+                                        obfs=item.get("obfs"),
+                                        obfs_param=item.get("obfs_param"),
+                                        protocol=item.get("protocol"),
+                                        protocol_param=item.get("protocol_param")
+                                    ))
+                                    logger.info(f"成功解析nodes字段节点: {name}")
+                                elif "name" in item and "address" in item and "port" in item:
+                                    # 简单格式
+                                    nodes.append(Node(
+                                        name=item["name"],
+                                        address=item["address"],
+                                        port=item["port"]
+                                    ))
+                                    logger.info(f"成功解析简单格式节点: {item['name']}")
+
+                except json.JSONDecodeError:
+                    # 如果不是JSON，尝试按行解析
+                    lines = content.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+
+                        # 尝试解析格式：name|address|port
+                        parts = line.split('|')
+                        if len(parts) >= 3:
                             try:
-                                name = parts[1] if len(parts) > 1 else f"节点-{len(nodes)+1}"
                                 nodes.append(Node(
-                                    name=name,
-                                    address=addr_parts[0],
-                                    port=int(addr_parts[1])
+                                    name=parts[0],
+                                    address=parts[1],
+                                    port=int(parts[2])
                                 ))
+                                logger.info(f"成功解析文本格式节点: {parts[0]}")
                                 continue
                             except:
                                 pass
+
+                        # 尝试解析格式：address:port name
+                        parts = line.split(' ', 1)
+                        if len(parts) >= 1:
+                            addr_parts = parts[0].split(':')
+                            if len(addr_parts) == 2:
+                                try:
+                                    name = parts[1] if len(parts) > 1 else f"节点-{len(nodes)+1}"
+                                    nodes.append(Node(
+                                        name=name,
+                                        address=addr_parts[0],
+                                        port=int(addr_parts[1])
+                                    ))
+                                    logger.info(f"成功解析地址端口格式节点: {name}")
+                                    continue
+                                except:
+                                    pass
 
             if not nodes:
                 logger.error("未能从订阅中解析出有效节点")

@@ -1,14 +1,14 @@
 {
-    "server": "d3.alibabamysql.com",
+    "server": "server.example.com",
     "local_address": "127.0.0.1",
     "local_port": 1080,
     "timeout": 300,
     "workers": 1,
-    "server_port": 7003,
-    "password": "di15PV",
-    "method": "rc4-md5",
+    "server_port": 8388,
+    "password": "password123",
+    "method": "aes-256-cfb",
     "obfs": "plain",
-    "obfs_param": "90f3b72291.www.gov.hk",
-    "protocol": "auth_aes128_md5",
-    "protocol_param": "72291:gMe1NM"
-} 
+    "obfs_param": "example.com",
+    "protocol": "origin",
+    "protocol_param": ""
+}

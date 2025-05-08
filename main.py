@@ -23,19 +23,20 @@ def load_options():
     default_options = {
         "local_port": 7088,
         "web_port": 8123,
-        "subscription_url": "https://rss.rss-node.com/link/rjzfONPggKdGMI2B?mu",
+        "subscription_url": "https://example.com/subscribe/demo?format=ssr",
         "subscription_update_interval": 12,
         "default_node": "auto",
-        "use_custom_node": False,
+        "use_custom_node": True,
         "custom_node": {
-            "server": "d3.alibabamysql.com",
-            "server_port": 1127,
-            "password": "di15PV",
-            "method": "rc4-md5",
-            "obfs": "tls1.2_ticket_auth",
-            "obfs_param": "90f3b72291.www.gov.hk",
-            "protocol": "auth_aes128_md5",
-            "protocol_param": "72291:gMe1NM"
+            "name": "自定义节点-1",
+            "server": "server.example.com",
+            "server_port": 8388,
+            "password": "password123",
+            "method": "aes-256-cfb",
+            "obfs": "plain",
+            "obfs_param": "example.com",
+            "protocol": "origin",
+            "protocol_param": ""
         },
         "custom_nodes": []
     }
@@ -58,7 +59,23 @@ def load_options():
                 # 创建自定义节点列表
                 custom_nodes = []
                 if custom_node and "server" in custom_node and "server_port" in custom_node:
+                    # 添加名称前缀，以便在ProxyManager中识别为自定义节点
+                    if "name" not in custom_node:
+                        custom_node["name"] = "自定义节点-1"
+                    elif not custom_node["name"].startswith("自定义节点"):
+                        custom_node["name"] = "自定义节点-" + custom_node["name"]
+
+                    # 确保所有必要字段都存在
+                    if "password" not in custom_node:
+                        logger.warning("自定义节点缺少password字段，使用默认值")
+                        custom_node["password"] = "password"
+
+                    if "method" not in custom_node:
+                        logger.warning("自定义节点缺少method字段，使用默认值")
+                        custom_node["method"] = "rc4-md5"
+
                     custom_nodes.append(custom_node)
+                    logger.info(f"已添加自定义节点: {custom_node['name']}")
                 options["custom_nodes"] = custom_nodes
 
             return options
