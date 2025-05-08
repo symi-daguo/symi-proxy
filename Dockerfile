@@ -1,10 +1,10 @@
-FROM alpine:3.19
+FROM alpine:3.17
 
 # 设置标签
 LABEL \
     io.hass.name="Symi Proxy" \
     io.hass.description="Symi Proxy with subscription support for Home Assistant OS" \
-    io.hass.version="1.0.8" \
+    io.hass.version="1.0.9" \
     io.hass.type="addon" \
     io.hass.arch="armhf|armv7|aarch64|amd64|i386" \
     maintainer="Symi Proxy Team" \
@@ -14,16 +14,21 @@ LABEL \
     org.opencontainers.image.url="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.source="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.documentation="https://github.com/symi-daguo/symi-proxy/blob/master/README.md" \
-    org.opencontainers.image.version="1.0.8"
+    org.opencontainers.image.version="1.0.9"
 
 # 设置环境变量
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖
-RUN apk update && \
-    apk add --no-cache python3 py3-pip iptables bash jq curl wget && \
-    pip3 install --no-cache-dir requests
+# 安装依赖 - 分步执行以便于排查问题
+RUN apk update
+RUN apk add --no-cache python3
+RUN apk add --no-cache py3-pip
+RUN apk add --no-cache bash
+RUN apk add --no-cache jq
+RUN apk add --no-cache curl
+RUN apk add --no-cache wget
+RUN pip3 install --no-cache-dir requests
 
 # 创建目录
 RUN mkdir -p /app/templates
