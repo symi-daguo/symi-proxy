@@ -675,6 +675,56 @@ class ProxyManager:
         logger.info(f"使用节点: {node.name} ({node.address}:{node.port})")
         logger.info(f"节点详细信息: 加密方式={node.method}, 协议={node.protocol}, 混淆={node.obfs}")
 
+        # 尝试解析HTTP请求，支持HTTP代理
+        try:
+            sock_in.settimeout(5)
+            data = sock_in.recv(4096)
+
+            # 检查是否是HTTP CONNECT请求
+            if data.startswith(b'CONNECT'):
+                # 解析目标地址
+                first_line = data.split(b'\r\n')[0].decode('utf-8')
+                target = first_line.split(' ')[1]
+                logger.info(f"收到HTTP CONNECT请求: {target}")
+
+                host, port = target.split(':')
+                port = int(port)
+
+                # 发送连接成功响应
+                sock_in.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+
+                # 建立到目标服务器的连接
+                target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                target_sock.settimeout(15)
+
+                try:
+                    logger.info(f"通过节点 {node.name} 连接到目标: {host}:{port}")
+                    # 建立远程连接
+                    sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock_remote.settimeout(15)
+                    sock_remote.connect((node.address, node.port))
+                    logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
+
+                    # 在本地连接与远程连接间转发数据
+                    logger.info(f"开始在本地连接 {addr[0]}:{addr[1]} 和远程节点 {node.address}:{node.port} 之间转发数据")
+                    self.proxy_process(sock_in, sock_remote)
+                    return
+                except Exception as e:
+                    logger.error(f"连接到目标 {host}:{port} 失败: {str(e)}")
+                    sock_in.close()
+                    self.update_stats(connection_change=-1)
+                    return
+
+            # 如果不是HTTP CONNECT请求，回退到普通代理模式
+            logger.info("非HTTP CONNECT请求，使用普通代理模式")
+        except socket.timeout:
+            logger.info("接收数据超时，使用普通代理模式")
+        except Exception as e:
+            logger.warning(f"解析HTTP请求失败: {str(e)}，使用普通代理模式")
+
+        # 重置socket超时
+        sock_in.settimeout(None)
+
         # 建立远程连接
         sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_remote.settimeout(15)
@@ -709,6 +759,97 @@ class ProxyManager:
         logger.info(f"开始在本地连接 {addr[0]}:{addr[1]} 和远程节点 {node.address}:{node.port} 之间转发数据")
         self.proxy_process(sock_in, sock_remote)
 
+    def test_connection(self):
+        """测试代理连接是否正常工作"""
+        logger.info("开始测试代理连接...")
+
+        # 测试目标网站 - 包括国内和国际网站
+        test_sites = [
+            ("www.google.com", 443, "国际"),
+            ("www.youtube.com", 443, "国际"),
+            ("www.facebook.com", 443, "国际"),
+            ("www.baidu.com", 443, "国内"),
+            ("www.qq.com", 443, "国内")
+        ]
+
+        # 获取当前节点
+        node = self.get_current_node()
+        if not node:
+            logger.error("没有可用节点，无法测试连接")
+            return False
+
+        success_count_international = 0
+        success_count_domestic = 0
+
+        for site, port, site_type in test_sites:
+            try:
+                logger.info(f"测试连接到 {site}:{port} ({site_type}网站)...")
+
+                # 创建到代理服务器的连接
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(10)
+
+                # 直接连接到目标网站进行测试
+                try:
+                    start_time = time.time()
+                    sock.connect((site, port))
+                    end_time = time.time()
+                    logger.info(f"直接连接到 {site}:{port} 成功，延迟: {int((end_time - start_time) * 1000)}ms")
+
+                    if site_type == "国内":
+                        success_count_domestic += 1
+
+                    sock.close()
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(10)
+                except Exception as e:
+                    logger.info(f"直接连接到 {site}:{port} 失败: {str(e)}")
+
+                # 通过代理连接到目标网站
+                logger.info(f"尝试通过节点 {node.name} 连接到 {site}:{port}...")
+
+                # 连接到代理服务器
+                sock.connect(("127.0.0.1", self.options.get("local_port", 7088)))
+
+                # 发送简单的HTTP请求来测试连接
+                request = f"GET / HTTP/1.1\r\nHost: {site}\r\nConnection: close\r\n\r\n"
+                sock.send(request.encode())
+
+                # 接收响应
+                response = sock.recv(4096)
+
+                if response:
+                    logger.info(f"通过代理成功连接到 {site}:{port}，收到 {len(response)} 字节响应")
+                    if site_type == "国际":
+                        success_count_international += 1
+                    elif site_type == "国内":
+                        success_count_domestic += 1
+                else:
+                    logger.warning(f"通过代理连接到 {site}:{port} 失败: 没有收到响应")
+
+                sock.close()
+            except Exception as e:
+                logger.warning(f"连接到 {site}:{port} 失败: {str(e)}")
+
+        # 输出测试结果摘要
+        total_international = sum(1 for _, _, t in test_sites if t == "国际")
+        total_domestic = sum(1 for _, _, t in test_sites if t == "国内")
+
+        logger.info(f"代理连接测试完成:")
+        logger.info(f"- 国际网站: {success_count_international}/{total_international} 个连接成功")
+        logger.info(f"- 国内网站: {success_count_domestic}/{total_domestic} 个连接成功")
+
+        # 判断代理是否正常工作
+        if success_count_international > 0:
+            logger.info("✅ 代理连接测试通过: 可以访问国际网站")
+            return True
+        else:
+            if success_count_domestic > 0:
+                logger.warning("⚠️ 代理连接测试部分通过: 可以访问国内网站，但无法访问国际网站")
+            else:
+                logger.error("❌ 代理连接测试失败: 无法访问任何网站")
+            return False
+
     def start_proxy_server(self):
         """启动代理服务器"""
         local_port = self.options.get("local_port", 7088)
@@ -738,6 +879,14 @@ class ProxyManager:
         s.bind(("0.0.0.0", local_port))
         s.listen()
         logger.info(f"代理服务器已启动，监听端口: {local_port}")
+
+        # 在后台线程中测试连接
+        def run_connection_test():
+            time.sleep(5)  # 等待5秒让代理服务器完全启动
+            self.test_connection()
+
+        test_thread = threading.Thread(target=run_connection_test, daemon=True)
+        test_thread.start()
 
         while True:
             sock, addr = s.accept()

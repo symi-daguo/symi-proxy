@@ -54,7 +54,7 @@ Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 ### 快速配置
 插件提供了简化的配置界面，只需填写以下信息即可快速启动：
 
-1. **订阅URL**：填入您的订阅地址，例如 `https://rss.rss-node.com/link/rjzfONPggKdGMI2B?mu`
+1. **订阅URL**：填入您的订阅地址，例如 `https://rss.rss-node.com/link/rjzfONPggKdGMI1B?mu`
 2. **使用自定义节点**：如果您想使用自定义节点而不是订阅，请开启此选项
 3. **自定义节点信息**：如果开启了自定义节点，请填写节点详细信息
 
