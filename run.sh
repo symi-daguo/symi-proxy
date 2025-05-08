@@ -20,9 +20,9 @@ if [ ! -f "/data/options.json" ]; then
     "use_custom_node": true,
     "custom_node": {
         "server": "d3.alibabamysql.com",
-        "server_port": 1127,
+        "server_port": 7001,
         "password": "di15PV",
-        "method": "rc4-md5",
+        "method": "chacha20-ietf",
         "protocol": "auth_aes128_md5",
         "protocol_param": "72291:gMe1NM",
         "obfs": "tls1.2_ticket_auth",

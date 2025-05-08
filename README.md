@@ -4,9 +4,14 @@ Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 
 ## 版本更新
 
-当前版本：1.1.0
+当前版本：1.1.1
 
 ## 最新更新内容
+
+### 1.1.1 版本 (2025年5月8日)
+- 更新节点配置信息，修正服务器端口和加密方式
+- 优化配置示例，提供完整的JSON配置选项
+- 增加可选字段说明，方便用户进行高级配置
 
 ### 1.1.0 版本 (2025年5月8日) - 正式版
 - 增强代理功能，添加HTTP代理支持
@@ -80,9 +85,9 @@ Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 ```json
 {
   "server": "d3.alibabamysql.com",
-  "server_port": 1127,
+  "server_port": 7001,
   "password": "di15PV",
-  "method": "rc4-md5",
+  "method": "chacha20-ietf",
   "protocol": "auth_aes128_md5",
   "protocol_param": "72291:gMe1NM",
   "obfs": "tls1.2_ticket_auth",
@@ -90,16 +95,41 @@ Home Assistant OS的代理管理插件，支持订阅地址和节点选择。
 }
 ```
 
+或者您也可以直接复制以下完整配置（包含更多参数）：
+
+```json
+{
+  "server": "d3.alibabamysql.com",
+  "local_address": "127.0.0.1",
+  "local_port": 1080,
+  "timeout": 300,
+  "workers": 1,
+  "server_port": 7001,
+  "password": "di15PV",
+  "method": "chacha20-ietf",
+  "obfs": "tls1.2_ticket_auth",
+  "obfs_param": "90f3b72291.www.gov.hk",
+  "protocol": "auth_aes128_md5",
+  "protocol_param": "72291:gMe1NM"
+}
+```
+
 #### 手动配置字段说明
 如果您需要手动配置，以下是各字段的说明：
 - `server`: 服务器地址，例如 `d3.alibabamysql.com`
-- `server_port`: 服务器端口，例如 `1127`
+- `server_port`: 服务器端口，例如 `7001`
 - `password`: 密码，例如 `di15PV`
-- `method`: 加密方式，例如 `rc4-md5`
+- `method`: 加密方式，例如 `chacha20-ietf`
 - `protocol`: 协议，例如 `auth_aes128_md5`
 - `protocol_param`: 协议参数，例如 `72291:gMe1NM`
 - `obfs`: 混淆方式，例如 `tls1.2_ticket_auth`
 - `obfs_param`: 混淆参数，例如 `90f3b72291.www.gov.hk`
+
+可选字段：
+- `local_address`: 本地监听地址，默认 `127.0.0.1`
+- `local_port`: 本地监听端口，默认 `1080`
+- `timeout`: 超时时间（秒），默认 `300`
+- `workers`: 工作线程数，默认 `1`
 
 ### 端口设置
 - `local_port`: 本地代理端口，默认7088
