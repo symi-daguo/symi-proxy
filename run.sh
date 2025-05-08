@@ -14,10 +14,20 @@ if [ ! -f "/data/options.json" ]; then
 {
     "local_port": 7088,
     "web_port": 8123,
-    "subscription_url": "",
+    "subscription_url": "https://rss.rss-node.com/link/rjzfONPggKdGMI2B?mu",
     "subscription_update_interval": 12,
     "default_node": "auto",
-    "custom_nodes": []
+    "use_custom_node": false,
+    "custom_node": {
+        "server": "d3.alibabamysql.com",
+        "server_port": 1127,
+        "password": "di15PV",
+        "method": "rc4-md5",
+        "obfs": "tls1.2_ticket_auth",
+        "obfs_param": "90f3b72291.www.gov.hk",
+        "protocol": "auth_aes128_md5",
+        "protocol_param": "72291:gMe1NM"
+    }
 }
 EOF
 fi
