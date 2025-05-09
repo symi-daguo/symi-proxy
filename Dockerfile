@@ -20,15 +20,12 @@ LABEL \
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖 - 分步执行以便于排查问题
-RUN apk update
-RUN apk add --no-cache python3
-RUN apk add --no-cache py3-pip
-RUN apk add --no-cache bash
-RUN apk add --no-cache jq
-RUN apk add --no-cache curl
-RUN apk add --no-cache wget
-RUN pip3 install --no-cache-dir requests pyyaml
+# 安装依赖 - 使用国内镜像源并合并命令减少层数
+RUN echo "https://mirrors.aliyun.com/alpine/v3.17/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.17/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache python3 py3-pip bash jq curl wget && \
+    pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple requests pyyaml
 
 # 创建目录
 RUN mkdir -p /app/templates
