@@ -20,20 +20,9 @@ LABEL \
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖 - 使用多个镜像源以提高成功率
-RUN set -x && \
-    # 尝试官方源
-    (apk update || true) && \
-    # 如果失败，尝试阿里云镜像源
-    (echo "https://mirrors.aliyun.com/alpine/v3.17/main" > /etc/apk/repositories && \
-     echo "https://mirrors.aliyun.com/alpine/v3.17/community" >> /etc/apk/repositories && \
-     apk update) && \
-    # 安装所需软件包
-    apk add --no-cache python3 py3-pip bash jq curl wget && \
-    # 尝试多个pip源安装依赖
-    (pip3 install --no-cache-dir requests pyyaml || \
-     pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple requests pyyaml || \
-     pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple requests pyyaml)
+# 安装依赖 - 简化安装过程，减少出错可能
+RUN apk add --no-cache python3 py3-pip bash jq curl wget && \
+    pip3 install --no-cache-dir requests pyyaml
 
 # 创建目录
 RUN mkdir -p /app/templates
@@ -41,8 +30,6 @@ RUN mkdir -p /app/templates
 # 复制文件
 COPY *.py /app/
 COPY run.sh /
-# 确保templates目录存在
-RUN mkdir -p /app/templates
 
 # 设置权限
 RUN chmod a+x /app/*.py \
@@ -50,10 +37,9 @@ RUN chmod a+x /app/*.py \
 
 WORKDIR /app
 
-# 健康检查 - 使用环境变量获取web_port，默认为8123
+# 健康检查 - 简化健康检查，减少出错可能
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
-  CMD PORT=$(jq -r '.web_port // 8123' /data/options.json 2>/dev/null || echo 8123) && \
-      wget --quiet --tries=1 --spider http://localhost:${PORT} || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:8123 || exit 1
 
 # 启动命令
 CMD ["/run.sh"]
