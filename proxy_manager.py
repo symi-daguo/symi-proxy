@@ -224,6 +224,19 @@ class ProxyManager:
                 self.nodes = custom_nodes + nodes
                 self.last_update = datetime.now()
 
+                # 记住当前节点
+                current_node_name = self.current_node.name if self.current_node else None
+
+                # 如果当前使用的是自定义节点，或者配置要求使用自定义节点，则继续使用自定义节点
+                if (current_node_name and current_node_name.startswith("自定义节点")) or \
+                   (self.options.get("use_custom_node", False) and custom_nodes):
+                    # 强制使用自定义节点
+                    self.current_node = custom_nodes[0]
+                    logger.info(f"订阅更新后，强制使用自定义节点: {self.current_node.name}")
+                else:
+                    # 否则，重新选择节点
+                    self.select_node(self.options.get("default_node", "auto"))
+
             logger.info(f"订阅更新成功，共获取 {len(nodes)} 个节点")
             return True
 
@@ -749,6 +762,14 @@ class ProxyManager:
                 # 保持current_node不变
                 return False
 
+            # 首先检查是否有自定义节点，如果有，优先使用
+            custom_nodes = [node for node in available_nodes if node.name.startswith("自定义节点")]
+            if custom_nodes and self.options.get("use_custom_node", False):
+                # 使用第一个可用的自定义节点
+                self.current_node = custom_nodes[0]
+                logger.info(f"强制使用自定义节点: {self.current_node.name}")
+                return True
+
             # 根据选择器选择节点
             if node_selector == "auto":
                 # 自动选择延迟最低的节点
@@ -797,9 +818,16 @@ class ProxyManager:
 
                 # 更新订阅
                 if self.options.get("subscription_url"):
+                    # 记住当前节点
+                    current_node_name = self.current_node.name if self.current_node else None
+
+                    # 更新订阅
                     self.update_subscription()
-                    # 重新选择节点
-                    self.select_node(self.options.get("default_node", "auto"))
+
+                    # 如果当前没有使用自定义节点，或者更新订阅导致节点变化，则重新选择节点
+                    if not (current_node_name and current_node_name.startswith("自定义节点")):
+                        # 重新选择节点
+                        self.select_node(self.options.get("default_node", "auto"))
 
         # 启动线程
         t = threading.Thread(target=update_loop, daemon=True)

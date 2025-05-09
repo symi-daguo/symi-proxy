@@ -118,6 +118,15 @@ def main():
     # 创建代理管理器
     manager = ProxyManager(options)
 
+    # 如果用户配置了自定义节点，强制使用自定义节点
+    if options.get("use_custom_node", False) and options.get("custom_nodes"):
+        # 设置默认节点为第一个自定义节点
+        custom_node_name = options["custom_nodes"][0].get("name", "自定义节点-1")
+        logger.info(f"检测到自定义节点配置，强制使用自定义节点: {custom_node_name}")
+        options["default_node"] = custom_node_name
+        # 确保ProxyManager使用这个设置
+        manager.options["default_node"] = custom_node_name
+
     # 启动Web服务器
     web_port = options.get("web_port", 8123)
     web_server = start_web_server(manager, web_port)
