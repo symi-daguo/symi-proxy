@@ -71,7 +71,18 @@ def load_options():
 
                     if "method" not in custom_node:
                         logger.warning("自定义节点缺少method字段，使用默认值")
-                        custom_node["method"] = "rc4-md5"
+                        custom_node["method"] = "chacha20-ietf"
+
+                    if "obfs" not in custom_node:
+                        logger.warning("自定义节点缺少obfs字段，使用默认值")
+                        custom_node["obfs"] = "tls1.2_ticket_auth"
+
+                    # 打印节点详细信息，用于调试
+                    logger.info(f"节点详细配置: server={custom_node.get('server')}, "
+                               f"port={custom_node.get('server_port')}, "
+                               f"method={custom_node.get('method')}, "
+                               f"obfs={custom_node.get('obfs')}, "
+                               f"protocol={custom_node.get('protocol')}")
 
                     custom_nodes.append(custom_node)
                     logger.info(f"已添加自定义节点: {custom_node['name']}")
