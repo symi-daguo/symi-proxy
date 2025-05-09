@@ -9,6 +9,7 @@ import requests
 import base64
 import random
 import logging
+import re
 from datetime import datetime
 from selectors import DefaultSelector, EVENT_READ
 from urllib.parse import unquote, urlparse
@@ -1066,11 +1067,16 @@ class ProxyManager:
         """测试代理连接是否正常工作"""
         logger.info("开始测试代理连接...")
 
-        # 只测试国际网站，不测试国内网站
+        # 存储站点测试结果
+        self._site_test_results = {}
+
+        # 测试国际网站和Home Assistant相关网站
         test_sites = [
             ("www.google.com", 443, "国际"),
-            ("www.youtube.com", 443, "国际"),
-            ("www.facebook.com", 443, "国际")
+            ("github.com", 443, "Home Assistant"),
+            ("raw.githubusercontent.com", 443, "Home Assistant"),
+            ("pypi.org", 443, "Home Assistant"),
+            ("registry.npmjs.org", 443, "Home Assistant")
         ]
 
         # 获取当前节点
@@ -1136,35 +1142,57 @@ class ProxyManager:
                         if data:
                             logger.info(f"✅ 成功从 {site} 接收到 {len(data)} 字节数据")
                             success_count_international += 1
+                            self._site_test_results[site] = True
                         else:
                             logger.warning(f"❌ 未能从 {site} 接收到数据")
+                            self._site_test_results[site] = False
                     else:
                         logger.warning(f"❌ 代理连接建立失败: {response}")
+                        self._site_test_results[site] = False
 
                     sock.close()
                 except Exception as e:
                     logger.warning(f"❌ 连接到代理服务器失败: {str(e)}")
+                    self._site_test_results[site] = False
             except Exception as e:
                 logger.warning(f"❌ 测试连接到 {site}:{port} 失败: {str(e)}")
+                self._site_test_results[site] = False
 
         # 输出测试结果摘要
-        total_international = len(test_sites)
+        total_sites = len(test_sites)
+        ha_sites = [site for site in test_sites if site[2] == "Home Assistant"]
+        total_ha_sites = len(ha_sites)
+        success_ha_sites = sum(1 for site in test_sites if site[2] == "Home Assistant" and self._site_test_results.get(site[0], False))
 
         logger.info(f"代理连接测试完成:")
-        logger.info(f"- 国际网站: {success_count_international}/{total_international} 个连接成功")
+        logger.info(f"- 总计: {success_count_international}/{total_sites} 个连接成功")
+        logger.info(f"- Home Assistant相关网站: {success_ha_sites}/{total_ha_sites} 个连接成功")
+
+        # 记录每个站点的测试结果
+        logger.info("详细测试结果:")
+        for site, port, site_type in test_sites:
+            result = "✅ 成功" if self._site_test_results.get(site, False) else "❌ 失败"
+            logger.info(f"  - {site} ({site_type}): {result}")
 
         # 判断代理是否正常工作
         if success_count_international > 0:
             logger.info("✅ 代理连接测试通过: 可以访问国际网站")
+            if success_ha_sites > 0:
+                logger.info("✅ Home Assistant升级应该可以正常工作")
+            else:
+                logger.warning("⚠️ 无法连接到Home Assistant相关网站，升级可能会失败")
             return True
         else:
-            logger.error("❌ 代理连接测试失败: 无法访问国际网站")
+            logger.error("❌ 代理连接测试失败: 无法访问任何测试网站")
             logger.info("请检查节点配置是否正确，特别是服务器地址、端口、加密方式等")
             return False
 
     def start_proxy_server(self):
         """启动代理服务器"""
         local_port = self.options.get("local_port", 7088)
+
+        # 尝试自动配置Home Assistant使用代理
+        self._configure_ha_proxy(local_port)
 
         # 检查当前节点是否存在
         if not self.current_node:
@@ -1204,3 +1232,63 @@ class ProxyManager:
             sock, addr = s.accept()
             t = threading.Thread(target=self.handle_connection, args=(sock, addr))
             t.start()
+
+    def _configure_ha_proxy(self, local_port):
+        """尝试自动配置Home Assistant使用代理"""
+        try:
+            # 检查Home Assistant配置文件是否存在
+            ha_config_path = "/config/configuration.yaml"
+            if not os.path.exists(ha_config_path):
+                logger.warning(f"未找到Home Assistant配置文件: {ha_config_path}")
+                return
+
+            # 读取配置文件
+            with open(ha_config_path, 'r') as f:
+                config_content = f.read()
+
+            # 检查是否已经配置了代理
+            if "proxy_host: 127.0.0.1" in config_content and f"proxy_port: {local_port}" in config_content:
+                logger.info("Home Assistant已配置使用代理")
+                return
+
+            # 添加或更新代理配置
+            http_section = re.search(r'http:(\s+.*?)((\r?\n\w+:|$))', config_content, re.DOTALL)
+            if http_section:
+                # 已存在http部分，检查是否有代理配置
+                http_content = http_section.group(1)
+                if "proxy_host:" in http_content:
+                    # 更新现有代理配置
+                    new_http_content = re.sub(
+                        r'proxy_host:.*?(\r?\n)',
+                        f'proxy_host: 127.0.0.1\n',
+                        http_content
+                    )
+                    new_http_content = re.sub(
+                        r'proxy_port:.*?(\r?\n)',
+                        f'proxy_port: {local_port}\n',
+                        new_http_content
+                    )
+                    new_config = config_content.replace(http_content, new_http_content)
+                else:
+                    # 添加代理配置到http部分
+                    new_http_content = http_content + f"\n  proxy_host: 127.0.0.1\n  proxy_port: {local_port}"
+                    new_config = config_content.replace(http_content, new_http_content)
+            else:
+                # 不存在http部分，添加新的http部分
+                new_config = config_content + f"\nhttp:\n  proxy_host: 127.0.0.1\n  proxy_port: {local_port}\n"
+
+            # 备份原配置文件
+            backup_path = f"{ha_config_path}.backup"
+            with open(backup_path, 'w') as f:
+                f.write(config_content)
+
+            # 写入新配置
+            with open(ha_config_path, 'w') as f:
+                f.write(new_config)
+
+            logger.info(f"已自动配置Home Assistant使用代理 (127.0.0.1:{local_port})")
+            logger.info(f"原配置已备份到 {backup_path}")
+            logger.info("请重启Home Assistant以使配置生效")
+
+        except Exception as e:
+            logger.warning(f"自动配置Home Assistant代理失败: {str(e)}")
