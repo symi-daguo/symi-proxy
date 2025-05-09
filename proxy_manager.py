@@ -894,11 +894,11 @@ class ProxyManager:
                             if key.fileobj == sock1:
                                 # 本地 -> 远程
                                 bytes_sent += data_len
-                                sock2.send(self.xor_encode(data_in))
+                                sock2.send(data_in)  # 直接发送数据，不进行XOR编码
                             else:
                                 # 远程 -> 本地
                                 bytes_received += data_len
-                                sock1.send(self.xor_encode(data_in))
+                                sock1.send(data_in)  # 直接发送数据，不进行XOR编码
                         except Exception as e:
                             logger.error(f"数据发送错误: {str(e)}")
                             sock1.close()
@@ -958,17 +958,16 @@ class ProxyManager:
                 # 发送连接成功响应
                 sock_in.send(b'HTTP/1.1 200 Connection Established\r\n\r\n')
 
-                # 建立到目标服务器的连接
-                target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                target_sock.settimeout(15)
-
                 try:
                     logger.info(f"通过节点 {node.name} 连接到目标: {host}:{port}")
+
                     # 建立远程连接
-                    sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock_remote.settimeout(15)
-                    sock_remote.connect((node.address, node.port))
-                    logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
+                    sock_remote = self._create_remote_connection(node)
+                    if not sock_remote:
+                        logger.error(f"无法创建到远程节点的连接")
+                        sock_in.close()
+                        self.update_stats(connection_change=-1)
+                        return
 
                     # 在本地连接与远程连接间转发数据
                     logger.info(f"开始在本地连接 {addr[0]}:{addr[1]} 和远程节点 {node.address}:{node.port} 之间转发数据")
@@ -991,26 +990,17 @@ class ProxyManager:
         sock_in.settimeout(None)
 
         # 建立远程连接
-        sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock_remote.settimeout(15)
-        try:
-            logger.info(f"正在连接到远程节点: {node.address}:{node.port}...")
-            sock_remote.connect((node.address, node.port))
-            logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
-        except Exception as e:
-            logger.error(f"连接到远程节点 {node.name} ({node.address}:{node.port}) 失败: {str(e)}")
-
+        sock_remote = self._create_remote_connection(node)
+        if not sock_remote:
             # 尝试重新选择节点
             if self.select_node("auto"):
                 node = self.get_current_node()
-                try:
-                    logger.info(f"尝试使用备用节点: {node.name} ({node.address}:{node.port})")
-                    sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock_remote.settimeout(15)
-                    sock_remote.connect((node.address, node.port))
+                logger.info(f"尝试使用备用节点: {node.name} ({node.address}:{node.port})")
+                sock_remote = self._create_remote_connection(node)
+                if sock_remote:
                     logger.info(f"已切换到备用节点 {node.name} 并成功连接")
-                except Exception as e:
-                    logger.error(f"连接到备用节点失败: {str(e)}")
+                else:
+                    logger.error(f"连接到备用节点失败")
                     sock_in.close()
                     self.update_stats(connection_change=-1)
                     return
@@ -1023,6 +1013,26 @@ class ProxyManager:
         # 在本地连接与远程连接间转发数据
         logger.info(f"开始在本地连接 {addr[0]}:{addr[1]} 和远程节点 {node.address}:{node.port} 之间转发数据")
         self.proxy_process(sock_in, sock_remote)
+
+    def _create_remote_connection(self, node):
+        """创建到远程节点的连接"""
+        try:
+            # 创建socket
+            sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock_remote.settimeout(15)
+
+            # 连接到远程节点
+            logger.info(f"正在连接到远程节点: {node.address}:{node.port}...")
+            sock_remote.connect((node.address, node.port))
+            logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
+
+            # 这里可以添加加密和协议处理
+            # 例如，如果使用SSR协议，可以在这里进行握手
+
+            return sock_remote
+        except Exception as e:
+            logger.error(f"连接到远程节点 {node.name} ({node.address}:{node.port}) 失败: {str(e)}")
+            return None
 
     def test_connection(self):
         """测试代理连接是否正常工作"""
@@ -1047,53 +1057,65 @@ class ProxyManager:
             try:
                 logger.info(f"测试连接到 {site}:{port} ({site_type}网站)...")
 
-                # 跳过直接连接测试，只测试通过代理的连接
-
-                # 使用curl命令通过代理测试连接
+                # 使用更简单的方法测试连接
                 local_port = self.options.get("local_port", 7088)
                 logger.info(f"尝试通过本地代理(127.0.0.1:{local_port})连接到 {site}:{port}...")
 
-                # 使用系统命令测试
-                if os.name == 'nt':  # Windows系统
-                    cmd = f'curl -s -o nul -w "%{{http_code}}" -m 10 -x http://127.0.0.1:{local_port} https://{site}'
-                else:  # Linux/Unix系统
-                    cmd = f'curl -s -o /dev/null -w "%{{http_code}}" -m 10 -x http://127.0.0.1:{local_port} https://{site}'
+                # 创建到代理服务器的连接
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(15)  # 增加超时时间
 
                 try:
-                    result = os.popen(cmd).read().strip()
-                    if result and int(result) >= 200 and int(result) < 400:
-                        logger.info(f"✅ 通过代理成功连接到 {site}，HTTP状态码: {result}")
-                        success_count_international += 1
-                    else:
-                        logger.warning(f"❌ 通过代理连接到 {site} 失败，HTTP状态码: {result}")
-                except Exception as e:
-                    logger.warning(f"❌ 执行curl命令失败: {str(e)}")
+                    # 连接到本地代理
+                    sock.connect(("127.0.0.1", local_port))
 
-                    # 如果curl命令失败，尝试使用socket直接连接
+                    # 构造HTTP CONNECT请求
+                    connect_request = f"CONNECT {site}:{port} HTTP/1.1\r\nHost: {site}:{port}\r\nUser-Agent: Mozilla/5.0\r\nConnection: keep-alive\r\n\r\n"
+                    sock.send(connect_request.encode())
+
+                    # 接收响应
+                    response = b""
+                    sock.settimeout(5)
                     try:
-                        # 创建到代理服务器的连接
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        sock.settimeout(10)
+                        response = sock.recv(4096)
+                    except socket.timeout:
+                        logger.warning(f"接收代理响应超时")
 
-                        # 连接到本地代理
-                        sock.connect(("127.0.0.1", local_port))
+                    if response and b"200 Connection Established" in response:
+                        logger.info(f"✅ 代理连接建立成功，开始测试数据传输...")
 
-                        # 构造HTTP CONNECT请求
-                        connect_request = f"CONNECT {site}:{port} HTTP/1.1\r\nHost: {site}:{port}\r\n\r\n"
-                        sock.send(connect_request.encode())
+                        # 发送简单的HTTP请求
+                        http_request = f"GET / HTTP/1.1\r\nHost: {site}\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n"
+                        sock.send(http_request.encode())
 
                         # 接收响应
-                        response = sock.recv(4096).decode('utf-8', errors='ignore')
+                        sock.settimeout(10)
+                        data = b""
+                        try:
+                            while True:
+                                chunk = sock.recv(4096)
+                                if not chunk:
+                                    break
+                                data += chunk
+                                if len(data) > 1024:  # 只需要接收一部分数据即可
+                                    break
+                        except socket.timeout:
+                            if len(data) > 0:
+                                logger.info(f"接收数据超时，但已收到 {len(data)} 字节")
+                            else:
+                                logger.warning(f"接收数据超时，未收到任何数据")
 
-                        if "200 Connection Established" in response:
-                            logger.info(f"✅ 通过代理成功连接到 {site}:{port}")
+                        if data:
+                            logger.info(f"✅ 成功从 {site} 接收到 {len(data)} 字节数据")
                             success_count_international += 1
                         else:
-                            logger.warning(f"❌ 通过代理连接到 {site}:{port} 失败: {response}")
+                            logger.warning(f"❌ 未能从 {site} 接收到数据")
+                    else:
+                        logger.warning(f"❌ 代理连接建立失败: {response}")
 
-                        sock.close()
-                    except Exception as e:
-                        logger.warning(f"❌ 通过socket连接失败: {str(e)}")
+                    sock.close()
+                except Exception as e:
+                    logger.warning(f"❌ 连接到代理服务器失败: {str(e)}")
             except Exception as e:
                 logger.warning(f"❌ 测试连接到 {site}:{port} 失败: {str(e)}")
 
