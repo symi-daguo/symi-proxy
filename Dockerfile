@@ -20,12 +20,20 @@ LABEL \
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖 - 使用国内镜像源并合并命令减少层数
-RUN echo "https://mirrors.aliyun.com/alpine/v3.17/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.17/community" >> /etc/apk/repositories && \
-    apk update && \
+# 安装依赖 - 使用多个镜像源以提高成功率
+RUN set -x && \
+    # 尝试官方源
+    (apk update || true) && \
+    # 如果失败，尝试阿里云镜像源
+    (echo "https://mirrors.aliyun.com/alpine/v3.17/main" > /etc/apk/repositories && \
+     echo "https://mirrors.aliyun.com/alpine/v3.17/community" >> /etc/apk/repositories && \
+     apk update) && \
+    # 安装所需软件包
     apk add --no-cache python3 py3-pip bash jq curl wget && \
-    pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple requests pyyaml
+    # 尝试多个pip源安装依赖
+    (pip3 install --no-cache-dir requests pyyaml || \
+     pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple requests pyyaml || \
+     pip3 install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple requests pyyaml)
 
 # 创建目录
 RUN mkdir -p /app/templates
