@@ -123,13 +123,54 @@ class ProxyManager:
         # 选择默认节点
         self.select_node(self.options.get("default_node", "auto"))
 
+        # 显示节点加载结果
+        if self.nodes:
+            logger.info(f"节点加载完成，共 {len(self.nodes)} 个节点")
+            for i, node in enumerate(self.nodes):
+                logger.info(f"  节点 {i+1}: {node.name} ({node.address}:{node.port})")
+        else:
+            logger.warning("未加载任何节点，请检查配置")
+
         # 启动定时更新线程
         self.start_update_thread()
 
     def load_custom_nodes(self):
         """加载自定义节点"""
-        custom_nodes = self.options.get("custom_nodes", [])
         loaded_count = 0
+
+        # 处理单个自定义节点配置 (custom_node)
+        if self.options.get("use_custom_node", False) and "custom_node" in self.options:
+            node_info = self.options["custom_node"]
+            logger.info(f"检测到单个自定义节点配置: {node_info}")
+
+            try:
+                if "server" in node_info and "server_port" in node_info:
+                    name = node_info.get("name", "自定义节点-1")
+                    if not name.startswith("自定义节点"):
+                        name = "自定义节点-" + name
+
+                    node = Node(
+                        name=name,
+                        address=node_info.get("server"),
+                        port=node_info.get("server_port"),
+                        password=node_info.get("password"),
+                        method=node_info.get("method"),
+                        obfs=node_info.get("obfs"),
+                        obfs_param=node_info.get("obfs_param"),
+                        protocol=node_info.get("protocol"),
+                        protocol_param=node_info.get("protocol_param")
+                    )
+
+                    self.nodes.append(node)
+                    loaded_count += 1
+                    logger.info(f"成功加载自定义节点: {node.name} ({node.address}:{node.port})")
+                else:
+                    logger.warning("自定义节点配置缺少必要字段 server 或 server_port")
+            except Exception as e:
+                logger.error(f"加载自定义节点失败: {str(e)}")
+
+        # 处理自定义节点列表配置 (custom_nodes)
+        custom_nodes = self.options.get("custom_nodes", [])
         for node_info in custom_nodes:
             try:
                 # 支持两种格式：简单格式(name,address,port)和完整格式(包括SS/SSR参数)

@@ -55,55 +55,7 @@ def load_options():
                 if key not in options:
                     options[key] = value
 
-            # 处理自定义节点 - 支持两种格式
-            custom_nodes = []
-
-            # 1. 处理单个自定义节点配置
-            if options.get("use_custom_node", False) and "custom_node" in options:
-                custom_node = options["custom_node"].copy()  # 创建副本避免修改原配置
-                if custom_node and "server" in custom_node and "server_port" in custom_node:
-                    # 添加名称前缀，以便在ProxyManager中识别为自定义节点
-                    if "name" not in custom_node:
-                        custom_node["name"] = "自定义节点-1"
-                    elif not custom_node["name"].startswith("自定义节点"):
-                        custom_node["name"] = "自定义节点-" + custom_node["name"]
-
-                    # 确保所有必要字段都存在
-                    if "password" not in custom_node:
-                        logger.warning("自定义节点缺少password字段，使用默认值")
-                        custom_node["password"] = "password"
-
-                    if "method" not in custom_node:
-                        logger.warning("自定义节点缺少method字段，使用默认值")
-                        custom_node["method"] = "chacha20-ietf"
-
-                    if "obfs" not in custom_node:
-                        logger.warning("自定义节点缺少obfs字段，使用默认值")
-                        custom_node["obfs"] = "plain"
-
-                    if "protocol" not in custom_node:
-                        custom_node["protocol"] = "origin"
-
-                    custom_nodes.append(custom_node)
-                    logger.info(f"已添加自定义节点: {custom_node['name']}")
-                    logger.info(f"节点配置: {custom_node['server']}:{custom_node['server_port']}")
-
-            # 2. 处理自定义节点列表配置
-            if "custom_nodes" in options and options["custom_nodes"]:
-                for i, node in enumerate(options["custom_nodes"]):
-                    if node and ("server" in node or "address" in node):
-                        # 确保节点有名称
-                        if "name" not in node:
-                            node["name"] = f"自定义节点-{len(custom_nodes)+1}"
-                        elif not node["name"].startswith("自定义节点"):
-                            node["name"] = "自定义节点-" + node["name"]
-
-                        # 如果没有添加过相同名称的节点，则添加
-                        if not any(existing["name"] == node["name"] for existing in custom_nodes):
-                            custom_nodes.append(node)
-                            logger.info(f"已添加自定义节点: {node['name']}")
-
-            options["custom_nodes"] = custom_nodes
+            # 自定义节点处理已移至ProxyManager中
 
             return options
         except Exception as e:
@@ -135,14 +87,7 @@ def main():
     # 创建代理管理器
     manager = ProxyManager(options)
 
-    # 如果用户配置了自定义节点，强制使用自定义节点
-    if options.get("use_custom_node", False) and options.get("custom_nodes"):
-        # 设置默认节点为第一个自定义节点
-        custom_node_name = options["custom_nodes"][0].get("name", "自定义节点-1")
-        logger.info(f"检测到自定义节点配置，强制使用自定义节点: {custom_node_name}")
-        options["default_node"] = custom_node_name
-        # 确保ProxyManager使用这个设置
-        manager.options["default_node"] = custom_node_name
+    # ProxyManager已经处理了节点选择逻辑
 
     # 启动Web服务器
     web_port = options.get("web_port", 8123)
