@@ -148,6 +148,14 @@ class SSRClient:
     def connect(self, target_host, target_port):
         """连接到目标服务器"""
         try:
+            # 如果加密库不可用，直接使用TCP连接
+            if not CRYPTO_AVAILABLE:
+                logger.info(f"加密库不可用，使用普通TCP连接到: {self.server}:{self.port}")
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(15)
+                sock.connect((self.server, self.port))
+                return sock, None
+
             # 连接到SSR服务器
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(15)
@@ -155,16 +163,18 @@ class SSRClient:
 
             # 生成IV
             iv_len = 16 if self.method.startswith('aes-') else 12 if self.method == 'chacha20-ietf' else 8
-            if CRYPTO_AVAILABLE:
-                try:
-                    iv = get_random_bytes(iv_len)
-                except:
-                    iv = bytes([random.randint(0, 255) for _ in range(iv_len)])
-            else:
+            try:
+                iv = get_random_bytes(iv_len)
+            except:
                 iv = bytes([random.randint(0, 255) for _ in range(iv_len)])
 
             # 创建加密器
             encrypt_cipher = self._create_cipher(self.key, iv, encrypt=True)
+
+            # 如果加密器创建失败，使用普通连接
+            if not encrypt_cipher:
+                logger.warning("加密器创建失败，使用普通TCP连接")
+                return sock, None
 
             # 构造SOCKS5连接请求
             # 地址类型 + 地址 + 端口
@@ -191,7 +201,6 @@ class SSRClient:
             sock.send(final_data)
 
             logger.info(f"SSR连接已建立: {self.server}:{self.port} -> {target_host}:{target_port}")
-            logger.info(f"使用加密: {self.method}, 协议: {self.protocol}, 混淆: {self.obfs}")
 
             return sock, encrypt_cipher
 
@@ -214,6 +223,10 @@ class SSRConnection:
         self.cipher = cipher
         self.client = client
         self.closed = False
+
+    def fileno(self):
+        """返回socket文件描述符，用于select操作"""
+        return self.sock.fileno()
 
     def send(self, data):
         """发送数据"""

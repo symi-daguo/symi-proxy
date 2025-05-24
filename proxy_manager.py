@@ -1183,35 +1183,39 @@ class ProxyManager:
     def _create_remote_connection(self, node):
         """创建到远程节点的连接"""
         try:
-            # 检查是否为SSR/SS节点
+            # 检查是否为SSR/SS节点且加密库可用
             if hasattr(node, 'password') and node.password and SSRClient:
-                logger.info(f"使用SSR协议连接到节点: {node.name}")
+                # 检查加密库是否可用
+                try:
+                    from ssr_client import CRYPTO_AVAILABLE
+                    if CRYPTO_AVAILABLE:
+                        logger.info(f"使用SSR协议连接到节点: {node.name}")
 
-                # 创建SSR客户端
-                ssr_client = SSRClient(
-                    server=node.address,
-                    port=node.port,
-                    password=node.password,
-                    method=getattr(node, 'method', 'aes-256-cfb'),
-                    protocol=getattr(node, 'protocol', 'origin'),
-                    obfs=getattr(node, 'obfs', 'plain'),
-                    protocol_param=getattr(node, 'protocol_param', ''),
-                    obfs_param=getattr(node, 'obfs_param', '')
-                )
+                        # 创建SSR客户端
+                        ssr_client = SSRClient(
+                            server=node.address,
+                            port=node.port,
+                            password=node.password,
+                            method=getattr(node, 'method', 'rc4-md5'),
+                            protocol=getattr(node, 'protocol', 'origin'),
+                            obfs=getattr(node, 'obfs', 'plain'),
+                            protocol_param=getattr(node, 'protocol_param', ''),
+                            obfs_param=getattr(node, 'obfs_param', '')
+                        )
 
-                logger.info(f"SSR参数 - 加密: {getattr(node, 'method', 'aes-256-cfb')}, "
-                           f"协议: {getattr(node, 'protocol', 'origin')}, "
-                           f"混淆: {getattr(node, 'obfs', 'plain')}")
+                        return ssr_client
+                    else:
+                        logger.warning("加密库不可用，使用普通TCP连接")
+                except ImportError:
+                    logger.warning("SSR模块不可用，使用普通TCP连接")
 
-                return ssr_client
-            else:
-                # 普通TCP连接
-                logger.info(f"使用普通TCP连接到节点: {node.address}:{node.port}")
-                sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock_remote.settimeout(15)
-                sock_remote.connect((node.address, node.port))
-                logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
-                return sock_remote
+            # 普通TCP连接
+            logger.info(f"使用普通TCP连接到节点: {node.address}:{node.port}")
+            sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock_remote.settimeout(15)
+            sock_remote.connect((node.address, node.port))
+            logger.info(f"成功连接到远程节点: {node.address}:{node.port}")
+            return sock_remote
 
         except Exception as e:
             logger.error(f"连接到远程节点 {node.name} ({node.address}:{node.port}) 失败: {str(e)}")

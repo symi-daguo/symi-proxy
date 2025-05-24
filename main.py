@@ -60,7 +60,7 @@ def load_options():
 
             # 1. 处理单个自定义节点配置
             if options.get("use_custom_node", False) and "custom_node" in options:
-                custom_node = options["custom_node"]
+                custom_node = options["custom_node"].copy()  # 创建副本避免修改原配置
                 if custom_node and "server" in custom_node and "server_port" in custom_node:
                     # 添加名称前缀，以便在ProxyManager中识别为自定义节点
                     if "name" not in custom_node:
@@ -79,12 +79,14 @@ def load_options():
 
                     if "obfs" not in custom_node:
                         logger.warning("自定义节点缺少obfs字段，使用默认值")
-                        custom_node["obfs"] = "tls1.2_ticket_auth"
+                        custom_node["obfs"] = "plain"
 
-
+                    if "protocol" not in custom_node:
+                        custom_node["protocol"] = "origin"
 
                     custom_nodes.append(custom_node)
                     logger.info(f"已添加自定义节点: {custom_node['name']}")
+                    logger.info(f"节点配置: {custom_node['server']}:{custom_node['server_port']}")
 
             # 2. 处理自定义节点列表配置
             if "custom_nodes" in options and options["custom_nodes"]:
