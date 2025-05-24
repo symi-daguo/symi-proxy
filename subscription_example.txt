@@ -1,0 +1,6 @@
+# 这是一个示例订阅文件，展示了支持的文本格式
+# 每行一个节点，格式为：名称|地址|端口 或 地址:端口 名称
+
+节点1|server1.example.com|7088
+节点2|server2.example.com|7088
+server3.example.com:7088 节点3

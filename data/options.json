@@ -1,0 +1,41 @@
+{
+    "local_port": 7088,
+    "web_port": 8080,
+    "subscription_url": "",
+    "update_interval": 3600,
+    "default_node": {
+        "name": "示例节点",
+        "address": "example.com",
+        "port": 443,
+        "password": "your_password",
+        "method": "aes-256-cfb",
+        "protocol": "origin",
+        "obfs": "plain",
+        "protocol_param": "",
+        "obfs_param": ""
+    },
+    "custom_nodes": [
+        {
+            "name": "SSR节点示例",
+            "address": "ssr.example.com",
+            "port": 443,
+            "password": "your_ssr_password",
+            "method": "aes-256-cfb",
+            "protocol": "auth_aes128_md5",
+            "obfs": "tls1.2_ticket_auth",
+            "protocol_param": "",
+            "obfs_param": "example.com"
+        },
+        {
+            "name": "SS节点示例",
+            "address": "ss.example.com",
+            "port": 8388,
+            "password": "your_ss_password",
+            "method": "chacha20-ietf-poly1305",
+            "protocol": "origin",
+            "obfs": "plain",
+            "protocol_param": "",
+            "obfs_param": ""
+        }
+    ]
+}

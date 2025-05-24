@@ -1,0 +1,46 @@
+{
+  "name": "Symi Proxy",
+  "version": "1.2.0",
+  "slug": "symi_proxy",
+  "description": "代理管理工具，支持多种订阅格式和节点管理",
+  "arch": ["amd64", "armv7", "aarch64"],
+  "startup": "application",
+  "boot": "auto",
+  "init": false,
+  "options": {
+    "subscription_url": "https://example.com/subscribe/demo?format=ssr",
+    "subscription_update_interval": 12,
+    "web_port": 8123,
+    "local_port": 7088,
+    "default_node": "auto",
+    "use_custom_node": true,
+    "custom_node": {
+      "server": "d3.alibabamysql.com",
+      "server_port": 7001,
+      "password": "di15PV",
+      "method": "chacha20-ietf",
+      "protocol": "auth_aes128_md5",
+      "protocol_param": "72291:gMe1NM",
+      "obfs": "tls1.2_ticket_auth",
+      "obfs_param": "90f3b72291.www.gov.hk"
+    }
+  },
+  "schema": {
+    "subscription_url": "str?",
+    "subscription_update_interval": "int(1,48)",
+    "web_port": "int(1025,65535)",
+    "local_port": "int(1025,65535)",
+    "default_node": "str",
+    "use_custom_node": "bool",
+    "custom_node": {
+      "server": "str",
+      "server_port": "int(1,65535)",
+      "password": "str",
+      "method": "str",
+      "obfs": "str?",
+      "obfs_param": "str?",
+      "protocol": "str?",
+      "protocol_param": "str?"
+    }
+  }
+}
