@@ -1239,12 +1239,14 @@ class ProxyManager:
     def _create_remote_connection(self, node):
         """创建到远程节点的连接"""
         try:
-            # 检查是否为SSR/SS节点且加密库可用
-            if hasattr(node, 'password') and node.password and SSRClient:
+            # 对于SSR节点，我们需要特殊处理
+            if hasattr(node, 'password') and node.password:
+                logger.info(f"检测到SSR节点: {node.name}")
+
                 # 检查加密库是否可用
                 try:
                     from ssr_client import CRYPTO_AVAILABLE
-                    if CRYPTO_AVAILABLE:
+                    if CRYPTO_AVAILABLE and SSRClient:
                         logger.info(f"使用SSR协议连接到节点: {node.name}")
 
                         # 创建SSR客户端
@@ -1261,11 +1263,13 @@ class ProxyManager:
 
                         return ssr_client
                     else:
-                        logger.warning("加密库不可用，使用普通TCP连接")
+                        logger.warning("加密库不可用，SSR节点无法使用普通TCP连接")
+                        return None
                 except ImportError:
-                    logger.warning("SSR模块不可用，使用普通TCP连接")
+                    logger.warning("SSR模块不可用，SSR节点无法使用")
+                    return None
 
-            # 普通TCP连接
+            # 普通TCP连接（仅用于非SSR节点）
             logger.info(f"使用普通TCP连接到节点: {node.address}:{node.port}")
             sock_remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock_remote.settimeout(15)
@@ -1438,51 +1442,7 @@ class ProxyManager:
             logger.info("请检查节点配置是否正确，特别是服务器地址、端口、加密方式等")
             return False
 
-    def start_proxy_server(self):
-        """启动代理服务器"""
-        local_port = self.options.get("local_port", 7088)
 
-        # 尝试自动配置Home Assistant使用代理
-        self._configure_ha_proxy(local_port)
-
-        # 检查当前节点是否存在
-        if not self.current_node:
-            logger.error("没有可用节点，无法启动代理服务器")
-            raise Exception("没有可用节点，请检查配置或订阅地址")
-
-        # 设置iptables规则，防止RST包（仅在Linux环境下）
-        if os.name != 'nt':  # 非Windows系统
-            try:
-                # 检查iptables是否可用
-                if os.system("which iptables > /dev/null 2>&1") == 0:
-                    # 先清除可能存在的旧规则
-                    os.system("iptables -D INPUT -p tcp --tcp-flags RST RST -j DROP 2>/dev/null || true")
-                    # 添加新规则
-                    os.system(f"iptables -A INPUT -p tcp --tcp-flags RST RST -j DROP")
-                    logger.info("已设置iptables规则")
-                else:
-                    logger.warning("iptables命令不可用，跳过设置规则")
-            except Exception as e:
-                logger.warning(f"设置iptables规则失败: {str(e)}")
-
-        # 创建socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("0.0.0.0", local_port))
-        s.listen()
-        logger.info(f"代理服务器已启动，监听端口: {local_port}")
-
-        # 在后台线程中测试连接
-        def run_connection_test():
-            time.sleep(5)  # 等待5秒让代理服务器完全启动
-            self.test_connection()
-
-        test_thread = threading.Thread(target=run_connection_test, daemon=True)
-        test_thread.start()
-
-        while True:
-            sock, addr = s.accept()
-            t = threading.Thread(target=self.handle_connection, args=(sock, addr))
-            t.start()
 
     def _configure_ha_proxy(self, local_port):
         """尝试自动配置Home Assistant使用代理"""

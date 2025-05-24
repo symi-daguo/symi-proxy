@@ -4,7 +4,7 @@ FROM alpine:3.17
 LABEL \
     io.hass.name="Symi Proxy" \
     io.hass.description="Symi Proxy with subscription support for Home Assistant OS" \
-    io.hass.version="1.1.7" \
+    io.hass.version="1.2.4" \
     io.hass.type="addon" \
     io.hass.arch="armhf|armv7|aarch64|amd64|i386" \
     maintainer="Symi Proxy Team" \
@@ -14,15 +14,15 @@ LABEL \
     org.opencontainers.image.url="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.source="https://github.com/symi-daguo/symi-proxy" \
     org.opencontainers.image.documentation="https://github.com/symi-daguo/symi-proxy/blob/master/README.md" \
-    org.opencontainers.image.version="1.1.7"
+    org.opencontainers.image.version="1.2.4"
 
 # 设置环境变量
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖 - 简化安装过程，减少出错可能
-RUN apk add --no-cache python3 py3-pip bash jq curl wget && \
-    pip3 install --no-cache-dir requests pyyaml
+# 安装依赖 - 包含加密库支持
+RUN apk add --no-cache python3 py3-pip bash jq curl wget gcc musl-dev libffi-dev && \
+    pip3 install --no-cache-dir requests pyyaml pycryptodome cryptography
 
 # 创建目录
 RUN mkdir -p /app/templates

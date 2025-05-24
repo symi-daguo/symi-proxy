@@ -148,13 +148,10 @@ class SSRClient:
     def connect(self, target_host, target_port):
         """连接到目标服务器"""
         try:
-            # 如果加密库不可用，直接使用TCP连接
+            # 如果加密库不可用，SSR连接无法工作
             if not CRYPTO_AVAILABLE:
-                logger.info(f"加密库不可用，使用普通TCP连接到: {self.server}:{self.port}")
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(15)
-                sock.connect((self.server, self.port))
-                return sock, None
+                logger.error(f"加密库不可用，SSR连接无法建立到: {self.server}:{self.port}")
+                return None, None
 
             # 连接到SSR服务器
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
