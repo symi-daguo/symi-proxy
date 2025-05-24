@@ -17,52 +17,41 @@ logger = logging.getLogger("main")
 
 def load_options():
     """加载配置选项"""
-    # 优先使用本地data目录的配置文件
-    options_file = "data/options.json"
-    if not os.path.exists(options_file):
-        options_file = "/data/options.json"  # Home Assistant路径
+    print("Starting Symi Proxy...")
+    print("读取配置...")
 
-    # 默认选项
-    default_options = {
+    # 优先使用Home Assistant路径，然后是本地路径
+    config_files = ["/data/options.json", "data/options.json"]
+
+    for options_file in config_files:
+        if os.path.exists(options_file):
+            try:
+                with open(options_file, "r") as f:
+                    options = json.load(f)
+                print("配置文件存在")
+                print(f"本地端口: {options.get('local_port', 7088)}")
+                print(f"订阅更新间隔: {options.get('subscription_update_interval', 12)} 小时")
+
+                # 检查自定义节点配置
+                if options.get("use_custom_node", False) and "custom_node" in options:
+                    custom_node = options["custom_node"]
+                    print(f"检测到自定义节点: {custom_node.get('server')}:{custom_node.get('server_port')}")
+
+                return options
+            except Exception as e:
+                logger.error(f"加载配置文件失败: {str(e)}")
+                continue
+
+    print("配置文件不存在，使用默认配置")
+    return {
         "local_port": 7088,
         "web_port": 8123,
-        "subscription_url": "",  # 默认为空，避免404错误
+        "subscription_url": "",
         "subscription_update_interval": 12,
         "default_node": "auto",
-        "use_custom_node": True,
-        "custom_node": {
-            "server": "d3.alibabamysql.com",
-            "server_port": 7001,
-            "password": "di15PV",
-            "method": "chacha20-ietf",
-            "protocol": "auth_aes128_md5",
-            "protocol_param": "72291:gMe1NM",
-            "obfs": "tls1.2_ticket_auth",
-            "obfs_param": "90f3b72291.www.gov.hk"
-        },
+        "use_custom_node": False,
         "custom_nodes": []
     }
-
-    # 如果配置文件存在，则加载配置
-    if os.path.exists(options_file):
-        try:
-            with open(options_file, "r") as f:
-                options = json.load(f)
-            logger.info("已加载配置文件")
-
-            # 合并默认选项和用户配置
-            for key, value in default_options.items():
-                if key not in options:
-                    options[key] = value
-
-            # 自定义节点处理已移至ProxyManager中
-
-            return options
-        except Exception as e:
-            logger.error(f"加载配置文件失败: {str(e)}")
-
-    logger.warning("配置文件不存在，使用默认配置")
-    return default_options
 
 def start_proxy_server(manager):
     """启动代理服务器"""

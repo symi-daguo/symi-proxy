@@ -100,6 +100,8 @@ class Node:
 class ProxyManager:
     """代理管理器"""
     def __init__(self, options):
+        print("启动Symi Proxy主程序...")
+
         self.options = options
         self.nodes = []  # 节点列表
         self.current_node = None  # 当前使用的节点
@@ -111,25 +113,28 @@ class ProxyManager:
         }
         self.lock = threading.Lock()  # 线程锁
 
-        self.load_custom_nodes()  # 加载自定义节点
+        # 加载自定义节点
+        print("正在加载节点配置...")
+        self.load_custom_nodes()
 
         # 如果有订阅地址，则更新订阅
         subscription_url = self.options.get("subscription_url", "").strip()
         if subscription_url and subscription_url != "":
+            print(f"正在更新订阅: {subscription_url[:50]}...")
             self.update_subscription()
         else:
-            logger.info("未配置订阅地址，跳过订阅更新")
-
-        # 选择默认节点
-        self.select_node(self.options.get("default_node", "auto"))
+            print("未配置订阅地址，跳过订阅更新")
 
         # 显示节点加载结果
         if self.nodes:
-            logger.info(f"节点加载完成，共 {len(self.nodes)} 个节点")
+            print(f"✅ 节点加载完成，共 {len(self.nodes)} 个节点")
             for i, node in enumerate(self.nodes):
-                logger.info(f"  节点 {i+1}: {node.name} ({node.address}:{node.port})")
+                print(f"  节点 {i+1}: {node.name} ({node.address}:{node.port})")
         else:
-            logger.warning("未加载任何节点，请检查配置")
+            print("❌ 未加载任何节点，请检查配置")
+
+        # 选择默认节点
+        self.select_node(self.options.get("default_node", "auto"))
 
         # 启动定时更新线程
         self.start_update_thread()
@@ -138,10 +143,18 @@ class ProxyManager:
         """加载自定义节点"""
         loaded_count = 0
 
+        print(f"检查配置选项:")
+        print(f"  use_custom_node: {self.options.get('use_custom_node', False)}")
+        print(f"  custom_node存在: {'custom_node' in self.options}")
+
         # 处理单个自定义节点配置 (custom_node)
         if self.options.get("use_custom_node", False) and "custom_node" in self.options:
             node_info = self.options["custom_node"]
-            logger.info(f"检测到单个自定义节点配置: {node_info}")
+            print(f"✅ 检测到单个自定义节点配置:")
+            print(f"   server: {node_info.get('server')}")
+            print(f"   server_port: {node_info.get('server_port')}")
+            print(f"   password: {node_info.get('password')}")
+            print(f"   method: {node_info.get('method')}")
 
             try:
                 if "server" in node_info and "server_port" in node_info:
@@ -163,11 +176,13 @@ class ProxyManager:
 
                     self.nodes.append(node)
                     loaded_count += 1
-                    logger.info(f"成功加载自定义节点: {node.name} ({node.address}:{node.port})")
+                    print(f"✅ 成功加载自定义节点: {node.name} ({node.address}:{node.port})")
                 else:
-                    logger.warning("自定义节点配置缺少必要字段 server 或 server_port")
+                    print("❌ 自定义节点配置缺少必要字段 server 或 server_port")
             except Exception as e:
-                logger.error(f"加载自定义节点失败: {str(e)}")
+                print(f"❌ 加载自定义节点失败: {str(e)}")
+        else:
+            print("❌ 未检测到自定义节点配置")
 
         # 处理自定义节点列表配置 (custom_nodes)
         custom_nodes = self.options.get("custom_nodes", [])
