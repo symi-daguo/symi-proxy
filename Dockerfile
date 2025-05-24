@@ -20,9 +20,17 @@ LABEL \
 ENV LANG="C.UTF-8" \
     PYTHONUNBUFFERED=1
 
-# 安装依赖 - 包含加密库支持
-RUN apk add --no-cache python3 py3-pip bash jq curl wget gcc musl-dev libffi-dev && \
-    pip3 install --no-cache-dir requests pyyaml pycryptodome cryptography
+# 安装系统依赖
+RUN apk add --no-cache python3 py3-pip bash jq curl wget
+
+# 安装Python依赖 - 分步安装以便调试
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir requests pyyaml
+
+# 安装加密库依赖 - 需要编译工具
+RUN apk add --no-cache gcc musl-dev libffi-dev python3-dev && \
+    pip3 install --no-cache-dir pycryptodome cryptography && \
+    apk del gcc musl-dev libffi-dev python3-dev
 
 # 创建目录
 RUN mkdir -p /app/templates
@@ -43,4 +51,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
 
 # 启动命令
 CMD ["/run.sh"]
-
