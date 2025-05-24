@@ -110,6 +110,7 @@ class ProxyManager:
             "total_traffic": 0,  # 单位：字节
         }
         self.lock = threading.Lock()  # 线程锁
+
         self.load_custom_nodes()  # 加载自定义节点
 
         # 如果有订阅地址，则更新订阅
@@ -1075,9 +1076,7 @@ class ProxyManager:
             self.update_stats(connection_change=-1)
             return
 
-        # 记录详细的节点信息
-        logger.info(f"使用节点: {node.name} ({node.address}:{node.port})")
-        logger.info(f"节点详细信息: 加密方式={node.method}, 协议={node.protocol}, 混淆={node.obfs}")
+        logger.info(f"使用节点: {node.name}")
 
         # 尝试解析HTTP请求，支持HTTP代理
         try:
@@ -1231,7 +1230,6 @@ class ProxyManager:
                 server_sock.listen(128)
 
                 logger.info(f"代理服务器已启动，监听端口: {local_port}")
-                print(f"代理服务器已启动，监听端口: {local_port}")
 
                 while True:
                     try:

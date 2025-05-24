@@ -222,22 +222,7 @@ class WebInterfaceHandler(BaseHTTPRequestHandler):
             }).encode())
             return
 
-        # 测试连接
-        if path == "/api/test_connection":
-            try:
-                result = proxy_manager.test_connection()
-                self._set_headers("application/json")
-                self.wfile.write(json.dumps({
-                    "success": result,
-                    "message": "连接测试完成" if result else "连接测试失败"
-                }).encode())
-            except Exception as e:
-                self._set_headers("application/json", 500)
-                self.wfile.write(json.dumps({
-                    "success": False,
-                    "message": f"连接测试出错: {str(e)}"
-                }).encode())
-            return
+
 
         # 404 API
         self._set_headers("application/json", 404)
@@ -278,7 +263,6 @@ def create_templates_directory():
                         <p><strong>更新间隔:</strong> {{update_interval}} 小时</p>
                         <p><strong>最后更新:</strong> {{last_update}}</p>
                         <button class="btn btn-primary" onclick="updateSubscription()">立即更新订阅</button>
-                        <button class="btn btn-success mt-2" onclick="testConnection()">测试连接</button>
                     </div>
                 </div>
 
@@ -397,27 +381,7 @@ def create_templates_directory():
             });
         }
 
-        // 测试连接
-        function testConnection() {
-            fetch('/api/test_connection', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ ' + data.message);
-                } else {
-                    alert('❌ ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('请求失败: ' + error);
-            });
-        }
+
 
         // 定时刷新统计信息
         setInterval(() => {

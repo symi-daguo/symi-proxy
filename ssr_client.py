@@ -12,9 +12,21 @@ import hmac
 import random
 import time
 import logging
-from Crypto.Cipher import AES, ChaCha20
-from Crypto.Random import get_random_bytes
 import base64
+
+try:
+    from Crypto.Cipher import AES, ChaCha20
+    from Crypto.Random import get_random_bytes
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
+        import os as crypto_os
+        CRYPTO_AVAILABLE = True
+    except ImportError:
+        CRYPTO_AVAILABLE = False
+        logging.warning("加密库不可用，SSR功能将受限")
 
 logger = logging.getLogger("ssr_client")
 
@@ -53,19 +65,27 @@ class SSRClient:
 
     def _create_cipher(self, key, iv, encrypt=True):
         """创建加密器"""
-        if self.method.startswith('aes-'):
-            if 'cfb' in self.method:
-                cipher = AES.new(key, AES.MODE_CFB, iv)
-            elif 'ctr' in self.method:
-                cipher = AES.new(key, AES.MODE_CTR, nonce=iv[:8], initial_value=iv[8:])
+        if not CRYPTO_AVAILABLE:
+            logger.warning("加密库不可用，返回空加密器")
+            return None
+
+        try:
+            if self.method.startswith('aes-'):
+                if 'cfb' in self.method:
+                    cipher = AES.new(key, AES.MODE_CFB, iv)
+                elif 'ctr' in self.method:
+                    cipher = AES.new(key, AES.MODE_CTR, nonce=iv[:8], initial_value=iv[8:])
+                else:
+                    cipher = AES.new(key, AES.MODE_CFB, iv)
+                return cipher
+            elif self.method.startswith('chacha20'):
+                cipher = ChaCha20.new(key=key, nonce=iv[:12] if self.method == 'chacha20-ietf' else iv[:8])
+                return cipher
             else:
-                cipher = AES.new(key, AES.MODE_CFB, iv)
-            return cipher
-        elif self.method.startswith('chacha20'):
-            cipher = ChaCha20.new(key=key, nonce=iv[:12] if self.method == 'chacha20-ietf' else iv[:8])
-            return cipher
-        else:
-            # 简单的RC4实现或其他
+                # 简单的RC4实现或其他
+                return None
+        except Exception as e:
+            logger.error(f"创建加密器失败: {str(e)}")
             return None
 
     def _encrypt(self, data, cipher):
@@ -135,7 +155,13 @@ class SSRClient:
 
             # 生成IV
             iv_len = 16 if self.method.startswith('aes-') else 12 if self.method == 'chacha20-ietf' else 8
-            iv = get_random_bytes(iv_len)
+            if CRYPTO_AVAILABLE:
+                try:
+                    iv = get_random_bytes(iv_len)
+                except:
+                    iv = bytes([random.randint(0, 255) for _ in range(iv_len)])
+            else:
+                iv = bytes([random.randint(0, 255) for _ in range(iv_len)])
 
             # 创建加密器
             encrypt_cipher = self._create_cipher(self.key, iv, encrypt=True)

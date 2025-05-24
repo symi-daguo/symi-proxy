@@ -57,7 +57,7 @@ def load_options():
 
             # 处理自定义节点 - 支持两种格式
             custom_nodes = []
-            
+
             # 1. 处理单个自定义节点配置
             if options.get("use_custom_node", False) and "custom_node" in options:
                 custom_node = options["custom_node"]
@@ -81,16 +81,11 @@ def load_options():
                         logger.warning("自定义节点缺少obfs字段，使用默认值")
                         custom_node["obfs"] = "tls1.2_ticket_auth"
 
-                    # 打印节点详细信息，用于调试
-                    logger.info(f"节点详细配置: server={custom_node.get('server')}, "
-                               f"port={custom_node.get('server_port')}, "
-                               f"method={custom_node.get('method')}, "
-                               f"obfs={custom_node.get('obfs')}, "
-                               f"protocol={custom_node.get('protocol')}")
+
 
                     custom_nodes.append(custom_node)
                     logger.info(f"已添加自定义节点: {custom_node['name']}")
-            
+
             # 2. 处理自定义节点列表配置
             if "custom_nodes" in options and options["custom_nodes"]:
                 for i, node in enumerate(options["custom_nodes"]):
@@ -100,12 +95,12 @@ def load_options():
                             node["name"] = f"自定义节点-{len(custom_nodes)+1}"
                         elif not node["name"].startswith("自定义节点"):
                             node["name"] = "自定义节点-" + node["name"]
-                        
+
                         # 如果没有添加过相同名称的节点，则添加
                         if not any(existing["name"] == node["name"] for existing in custom_nodes):
                             custom_nodes.append(node)
                             logger.info(f"已添加自定义节点: {node['name']}")
-            
+
             options["custom_nodes"] = custom_nodes
 
             return options
