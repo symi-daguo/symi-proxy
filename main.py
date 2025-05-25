@@ -68,22 +68,33 @@ def start_proxy_server(manager):
 
 def main():
     """主函数"""
-    logger.info("正在启动Symi Proxy...")
+    try:
+        logger.info("正在启动Symi Proxy...")
 
-    # 加载配置
-    options = load_options()
+        # 加载配置
+        options = load_options()
 
-    # 创建代理管理器
-    manager = ProxyManager(options)
+        # 创建代理管理器
+        manager = ProxyManager(options)
 
-    # ProxyManager已经处理了节点选择逻辑
+        # ProxyManager已经处理了节点选择逻辑
 
-    # 启动Web服务器
-    web_port = options.get("web_port", 8123)
-    web_server = start_web_server(manager, web_port)
+        # 启动Web服务器
+        web_port = options.get("web_port", 8123)
+        web_server = start_web_server(manager, web_port)
 
-    # 启动代理服务器
-    start_proxy_server(manager)
+        # 启动代理服务器
+        start_proxy_server(manager)
+
+    except KeyboardInterrupt:
+        logger.info("收到中断信号，正在关闭...")
+    except Exception as e:
+        logger.error(f"程序运行出错: {str(e)}")
+        logger.error("程序将保持运行状态，避免重启循环")
+        # 保持程序运行，避免重启循环
+        import time
+        while True:
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()

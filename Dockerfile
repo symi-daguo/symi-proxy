@@ -45,8 +45,8 @@ RUN chmod a+x /app/*.py \
 
 WORKDIR /app
 
-# 健康检查 - 简化健康检查，减少出错可能
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
+# 健康检查 - 给程序足够的启动时间
+HEALTHCHECK --interval=60s --timeout=15s --start-period=30s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:8123 || exit 1
 
 # 启动命令

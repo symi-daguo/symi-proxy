@@ -259,7 +259,10 @@ class ProxyManager:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
             response = requests.get(subscription_url, headers=headers, timeout=10)
-            if response.status_code != 200:
+            if response.status_code == 429:
+                logger.warning(f"订阅请求过于频繁 (429)，跳过本次更新")
+                return False
+            elif response.status_code != 200:
                 logger.error(f"订阅更新失败，状态码: {response.status_code}")
                 return False
 
